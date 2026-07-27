@@ -1,4 +1,4 @@
-2026
+**2026**
 
 1. Create user login and user dashboard
 2. Create user settings
@@ -6,7 +6,7 @@
 4. Add charts and graphs to user dashboard
 5. Add radars, heatmaps, and genre benchmarking to user dashboard
 
-2027
+**2027**
 
 1. Integrate multiple LLM models
 2. Create master multi-LLM model to score and analyze top screenplays
