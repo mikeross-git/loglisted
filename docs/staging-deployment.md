@@ -78,7 +78,7 @@ Expected:
 The watch command is for local verification only. The deployed start command is:
 
 ```sh
-npm ci
+npm ci --include=dev
 npm run build
 npm run start:staging
 ```
@@ -98,7 +98,7 @@ also prevents later Git pushes from silently replacing the reviewed staging buil
 Render runs these exact commands:
 
 ```sh
-npm ci && npm run build
+npm ci --include=dev && npm run build
 npm run start:staging
 ```
 
