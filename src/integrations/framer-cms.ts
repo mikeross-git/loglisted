@@ -51,6 +51,7 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   marketabilityScore: "Marketability Score",
   craftScore: "Craft Score",
   genreCategory: "Genre Category",
+  genreDropdown: "Genre Dropdown",
   imdb: "IMDB",
   format: "Format",
 });
@@ -263,6 +264,7 @@ export function buildFramerCmsItem(
     marketabilityScore: result.categoryScores.marketability,
     craftScore: result.categoryScores.craft,
     genreCategory: referenceValues.genreCategory ?? result.declaredGenre.trim(),
+    genreDropdown: result.declaredGenre.trim(),
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
   };

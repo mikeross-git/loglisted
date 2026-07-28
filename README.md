@@ -313,8 +313,10 @@ the public API.
    `Test = Yes`. Submitting/retrieving the same cached result must not add another item.
 
 The exact required display names are `Writer S Name`, `Email`, `Test`, `Script Title`, `Logline`,
-`Overall Score`, each of the ten named category score fields, `Genre Category`, `IMDB`, and
-`Format`. Framer's `Slug` is a built-in item property and is therefore not returned by
+`Overall Score`, each of the ten named category score fields, `Genre Category`, `Genre Dropdown`,
+`IMDB`, and `Format`. `Genre Category` is the reference used for the Genres relationship;
+`Genre Dropdown` is the existing enum used by some Framer views. The backend keeps both values
+consistent. Framer's `Slug` is a built-in item property and is therefore not returned by
 `getFields()` or mapped as a custom field. `Test` may be Boolean, text, or an enum containing
 Yes/No. Scores must be Number. IMDB may be Link or text. Enum values are resolved by their
 displayed option name.

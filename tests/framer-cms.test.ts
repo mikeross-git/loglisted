@@ -59,11 +59,21 @@ function fields(): CmsFieldDescriptor[] {
     type:
       key === "test"
         ? "boolean"
-        : key.endsWith("Score")
-          ? "number"
-          : key === "imdb"
-            ? "link"
-            : "string",
+        : key === "genreDropdown"
+          ? "enum"
+          : key.endsWith("Score")
+            ? "number"
+            : key === "imdb"
+              ? "link"
+              : "string",
+    ...(key === "genreDropdown"
+      ? {
+          cases: [
+            { id: "genre-action", name: "Action" },
+            { id: "genre-comedy", name: "Comedy" },
+          ],
+        }
+      : {}),
   }));
 }
 
@@ -88,6 +98,7 @@ describe("Framer CMS integration", () => {
     expect(fieldValue(item, "test")).toBe(true);
     expect(fieldValue(item, "format")).toBe("Half-Hour TV Pilot");
     expect(fieldValue(item, "genreCategory")).toBe("Comedy");
+    expect(fieldValue(item, "genreDropdown")).toBe("genre-comedy");
     expect(fieldValue(item, "logline")).toBe(result.internal.submissionLogline);
     expect(fieldValue(item, "overallScore")).toBe(7.6);
     for (const scoreKey of Object.keys(result.categoryScores)) {
