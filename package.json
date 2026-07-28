@@ -20,13 +20,15 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "framer:inspect": "tsx src/scripts/inspect-framer-cms.ts"
   },
   "dependencies": {
     "@fontsource/cutive": "^5.3.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "framer-api": "^0.1.26",
     "multer": "^2.2.0",
     "pdfjs-dist": "^5.4.54",
     "react": "^19.1.1",

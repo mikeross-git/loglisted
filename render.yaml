@@ -52,3 +52,13 @@ services:
         value: "false"
       - key: RAW_TEXT_PERSISTENCE_ENABLED
         value: "false"
+      - key: FRAMER_CMS_SYNC_ENABLED
+        value: "false"
+      - key: FRAMER_CMS_PUBLISH_MODE
+        value: draft
+      - key: FRAMER_API_TOKEN
+        sync: false
+      - key: FRAMER_PROJECT_ID
+        sync: false
+      - key: FRAMER_COLLECTION_ID
+        sync: false

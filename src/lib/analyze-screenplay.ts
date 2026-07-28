@@ -203,6 +203,7 @@ export async function analyzeScreenplay(
           outputTokens: budget.usage().outputTokens,
           estimatedCostUsd: budget.usage().actualCostUsd,
           approvedMetadata: screenplay.objective,
+          ...(claims.logline ? { submissionLogline: claims.logline } : {}),
           ...(claims.firstName && claims.lastName && claims.email
             ? {
                 submissionContact: {
@@ -244,6 +245,22 @@ export async function analyzeScreenplay(
       declaredFormat: claims.declaredFormat,
       declaredGenre: claims.primaryGenre,
       completedAt: new Date().toISOString(),
+      internal: {
+        ...stored.internal,
+        ...(claims.logline
+          ? { submissionLogline: claims.logline }
+          : { submissionLogline: undefined }),
+        ...(claims.firstName && claims.lastName && claims.email
+          ? {
+              submissionContact: {
+                firstName: claims.firstName,
+                lastName: claims.lastName,
+                email: claims.email,
+                ...(claims.imdbUrl ? { imdbUrl: claims.imdbUrl } : {}),
+              },
+            }
+          : { submissionContact: undefined }),
+      },
     };
     await dependencies.results.put(result, dependencies.resultTtlSeconds ?? 30 * 86_400);
     reused = true;

@@ -26,6 +26,12 @@ import { MemoryResultStore } from "./lib/storage/memory-result-store.js";
 import { TurnstileVerifier } from "./lib/turnstile.js";
 import { UploadTokenManager } from "./lib/upload-token.js";
 import type { WindowResult } from "./lib/storage/abuse-store.js";
+import {
+  FramerCmsSynchronizer,
+  loadFramerCmsConfig,
+  syncFramerCmsBestEffort,
+} from "./integrations/framer-cms.js";
+import { SafeLogger } from "./lib/logger.js";
 
 try {
   loadEnvFile(".env.local");
@@ -85,6 +91,8 @@ const DevEnvironmentSchema = z
   .passthrough();
 
 const environment = DevEnvironmentSchema.parse(process.env);
+const framerCms = new FramerCmsSynchronizer(loadFramerCmsConfig(process.env));
+const logger = new SafeLogger();
 const requiredOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
 if (!requiredOrigins.every((origin) => environment.ALLOWED_ORIGINS.includes(origin))) {
   throw new Error("Local ALLOWED_ORIGINS must include both supported Vite origins.");
@@ -285,6 +293,8 @@ app.get("/api/health", (_request, response) => {
     llmProvider: "mock",
     turnstileMode: "mock",
     storageMode: "memory",
+    framerCmsSyncEnabled: framerCms.enabled,
+    framerCmsConfigured: framerCms.configured,
   });
 });
 
@@ -321,6 +331,7 @@ app.post(
         findCachedResult: async (fileHash, sessionId) => {
           const stored = await results.findByFileAndSession(fileHash, sessionId);
           if (!stored) return null;
+          await syncFramerCmsBestEffort(framerCms, stored, logger);
           return {
             resultId: stored.resultId,
             resultAccessToken: resultTokens.issue(stored.resultId, sessionId).token,
@@ -368,6 +379,8 @@ app.post(
           trustedProxy: { trustedProxyIps: [] },
           ipHmacSecret: environment.IP_HMAC_SECRET,
           ...pipelineDependencies,
+          onSuccessfulResult: (result) =>
+            syncFramerCmsBestEffort(framerCms, result, logger).then(() => undefined),
         }),
         response,
       );

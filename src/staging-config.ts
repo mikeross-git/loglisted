@@ -79,6 +79,11 @@ export const StagingEnvironmentSchema = z
     RAW_TEXT_PERSISTENCE_ENABLED: z.literal("false").default("false"),
     STORAGE_DRIVER: z.literal("memory").default("memory"),
     TRUST_PROXY_HOPS: z.coerce.number().int().positive().max(5).default(1),
+    FRAMER_CMS_SYNC_ENABLED: booleanFromEnvironment.default(false),
+    FRAMER_CMS_PUBLISH_MODE: z.enum(["draft", "published"]).default("draft"),
+    FRAMER_API_TOKEN: z.string().optional(),
+    FRAMER_PROJECT_ID: z.string().optional(),
+    FRAMER_COLLECTION_ID: z.string().optional(),
   })
   .passthrough()
   .superRefine((config, context) => {
@@ -103,6 +108,21 @@ export const StagingEnvironmentSchema = z
         path: ["TURNSTILE_SECRET_KEY"],
         message: "Managed Turnstile mode cannot use a Cloudflare test secret.",
       });
+    }
+    if (config.FRAMER_CMS_SYNC_ENABLED) {
+      for (const key of [
+        "FRAMER_API_TOKEN",
+        "FRAMER_PROJECT_ID",
+        "FRAMER_COLLECTION_ID",
+      ] as const) {
+        if (!config[key]?.trim()) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required when Framer CMS synchronization is enabled.`,
+          });
+        }
+      }
     }
   });
 

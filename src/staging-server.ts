@@ -34,6 +34,11 @@ import {
   loadStagingConfig,
   type StagingConfig,
 } from "./staging-config.js";
+import {
+  FramerCmsSynchronizer,
+  syncFramerCmsBestEffort,
+  type FramerCmsConnector,
+} from "./integrations/framer-cms.js";
 
 export interface StagingProviderFactories {
   mock?: (options: MockLlmProviderOptions) => LlmProvider;
@@ -46,6 +51,7 @@ export interface StagingProviderFactories {
 export interface StagingAppOptions {
   providerFactories?: StagingProviderFactories;
   turnstileFetchImplementation?: typeof fetch;
+  framerCmsConnector?: FramerCmsConnector;
 }
 
 export interface StagingRuntime {
@@ -162,6 +168,16 @@ export function createStagingApp(
   };
   const abuseStore = new MemoryAbuseStore();
   const logger = new SafeLogger();
+  const framerCms = new FramerCmsSynchronizer(
+    {
+      FRAMER_CMS_SYNC_ENABLED: config.FRAMER_CMS_SYNC_ENABLED,
+      FRAMER_CMS_PUBLISH_MODE: config.FRAMER_CMS_PUBLISH_MODE,
+      FRAMER_API_TOKEN: config.FRAMER_API_TOKEN,
+      FRAMER_PROJECT_ID: config.FRAMER_PROJECT_ID,
+      FRAMER_COLLECTION_ID: config.FRAMER_COLLECTION_ID,
+    },
+    options.framerCmsConnector,
+  );
   const cacheStore = new MemoryCacheStore();
   const cache = new VersionedCache(cacheStore);
   const results = new MemoryResultStore();
@@ -260,7 +276,11 @@ export function createStagingApp(
   app.use(express.json({ limit: "1mb" }));
 
   const health = (_request: ExpressRequest, response: ExpressResponse) => {
-    response.json(stagingHealthStatus);
+    response.json({
+      ...stagingHealthStatus,
+      framerCmsSyncEnabled: framerCms.enabled,
+      framerCmsConfigured: framerCms.configured,
+    });
   };
   app.get("/health", health);
   app.get("/api/health", health);
@@ -311,6 +331,7 @@ export function createStagingApp(
           findCachedResult: async (fileHash, sessionId) => {
             const stored = await results.findByFileAndSession(fileHash, sessionId);
             if (!stored) return null;
+            await syncFramerCmsBestEffort(framerCms, stored, logger);
             return {
               resultId: stored.resultId,
               resultAccessToken: resultTokens.issue(stored.resultId, sessionId).token,
@@ -368,6 +389,8 @@ export function createStagingApp(
               });
             },
             ...pipelineDependencies,
+            onSuccessfulResult: (result) =>
+              syncFramerCmsBestEffort(framerCms, result, logger).then(() => undefined),
           }),
           response,
         );

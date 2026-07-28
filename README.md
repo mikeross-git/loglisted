@@ -280,3 +280,51 @@ provider systems beyond documented provider behavior.
   and optional writer information are not inputs.
 
 See [security-operations.md](docs/security-operations.md) for assumptions and residual risks.
+
+## Server-side Framer CMS synchronization
+
+CMS synchronization is an optional backend-only secondary operation. It runs only after a scoring
+result has been validated and persisted. A Framer failure is sanitized, bounded to three attempts
+for transient failures, and never changes the successful scoring response.
+
+The integration uses Framer's current Server API (`framer-api`), resolves collection fields by
+their exact display names, and then writes values using the returned field IDs. No field ID is
+guessed or committed. New records are drafts by default. Their deterministic slug combines the
+writer-name slug with the first eight alphanumeric characters of the result ID, so retries and
+cached-result synchronization find the same item without putting an email address in the URL.
+
+The configured collection appears to feed the public `/loglist` page. Treat it as public-facing:
+do not bind the `Email` field to any public component, export, search result, or client query.
+Separating private submission contacts from a public ranking collection is strongly recommended
+before production. This integration preserves the requested Email field but never returns it from
+the public API.
+
+### Configure and inspect
+
+1. In Framer, open the project, use **Settings → API Keys**, and create a server API key.
+2. Copy `.env.local.example` to `.env.local`; keep `FRAMER_CMS_SYNC_ENABLED=false`.
+3. Set `FRAMER_API_TOKEN`, `FRAMER_PROJECT_ID`, and `FRAMER_COLLECTION_ID` only in the backend
+   environment. Never prefix them with `VITE_`.
+4. Run `npm run framer:inspect`. It prints the collection name, exact resolved field map, and field
+   types, but not the token or submitted data. Fix missing/duplicate names or incompatible field
+   types before enabling writes.
+5. Set `FRAMER_CMS_SYNC_ENABLED=true` and leave `FRAMER_CMS_PUBLISH_MODE=draft`.
+6. Start locally with `npm run dev`, submit one mock screenplay, and verify one draft item with
+   `Test = Yes`. Submitting/retrieving the same cached result must not add another item.
+
+The exact required display names are `Writer S Name`, `Email`, `Test`, `Slug`, `Script Title`,
+`Logline`, `Overall Score`, each of the ten named category score fields, `Genre Category`, `IMDB`,
+and `Format`. `Test` may be Boolean, text, or an enum containing Yes/No. Scores must be Number.
+IMDB may be Link or text. Enum values are resolved by their displayed option name.
+
+For staging, add the five Framer variables in Render's server environment, run the inspection
+command from a trusted local shell first, then explicitly change `FRAMER_CMS_SYNC_ENABLED` to
+`true` and manually deploy the reviewed commit. Staging remains mock-only and defaults to draft.
+Confirm `/health` reports `framerCmsSyncEnabled: true` and `framerCmsConfigured: true`; it never
+returns IDs or credentials.
+
+To disable or roll back immediately, set `FRAMER_CMS_SYNC_ENABLED=false` and restart/redeploy the
+backend. Scoring continues normally. A failed sync remains retryable because the persisted result
+contains the result ID and approved submission fields; retrieving the cached result invokes the
+idempotent sync again. Framer records must be published manually unless
+`FRAMER_CMS_PUBLISH_MODE=published` is explicitly configured.

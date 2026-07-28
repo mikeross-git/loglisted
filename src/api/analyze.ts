@@ -14,6 +14,7 @@ import type { SlidingWindowRateLimiter } from "../lib/rate-limit.js";
 import { withSecurityHeaders } from "../lib/security-headers.js";
 import type { UploadTokenManager } from "../lib/upload-token.js";
 import { discardSensitiveBuffer } from "../lib/data-retention.js";
+import type { StoredResult } from "../lib/storage/result-store.js";
 
 export interface AnalyzeDependencies extends AnalyzePipelineDependencies {
   sessions: AnonymousSessionManager;
@@ -27,6 +28,7 @@ export interface AnalyzeDependencies extends AnalyzePipelineDependencies {
   analysisAttemptsPer10Minutes?: number;
   admitGlobalCapacity?: () => Promise<void>;
   onRejection?: (diagnostic: AnalyzeRejectionDiagnostic) => void;
+  onSuccessfulResult?: (result: StoredResult) => Promise<void>;
 }
 
 export type AnalyzeStage =
@@ -117,6 +119,11 @@ export async function postAnalyze(
         dependencies.onProcessingStage?.(pipelineStage);
       },
     });
+    try {
+      await dependencies.onSuccessfulResult?.(analyzed.result);
+    } catch {
+      // A secondary integration must never invalidate a completed score.
+    }
     await dependencies.quotas.recordCompleted(session.anonymousSessionId, hashedIp);
     return Response.json(
       {

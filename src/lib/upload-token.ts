@@ -18,6 +18,7 @@ export const UploadTokenClaimsSchema = z
     email: WriterEmailSchema.optional(),
     imdbUrl: ImdbProfileUrlSchema.optional(),
     projectTitle: z.string().min(1).max(200),
+    logline: z.string().max(1000).optional(),
     declaredFormat: z.enum(["feature", "halfHourPilot", "hourPilot", "short", "unknown"]),
     primaryGenre: z.string().min(1).max(100),
     confirmationsAccepted: z.literal(true),

@@ -218,6 +218,7 @@ export async function postUploadAuthorize(
       ...(input.project.email ? { email: input.project.email } : {}),
       ...(input.project.imdbUrl ? { imdbUrl: input.project.imdbUrl } : {}),
       projectTitle: input.project.projectTitle,
+      ...(input.project.logline ? { logline: input.project.logline } : {}),
       declaredFormat: input.project.format,
       primaryGenre: input.project.primaryGenre,
       aiProcessingPolicyVersion: dependencies.aiProcessingPolicyVersion ?? "ai-processing-policy-1",

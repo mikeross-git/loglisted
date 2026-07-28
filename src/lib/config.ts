@@ -156,6 +156,11 @@ export const ConfigSchema = z
     PDF_LOW_TEXT_PAGE_THRESHOLD: z.coerce.number().int().nonnegative().default(40),
     CHUNK_TARGET_TOKENS: z.coerce.number().int().min(1500).max(2500).default(2000),
     CHUNK_HARD_MAX_TOKENS: z.coerce.number().int().min(1500).default(2500),
+    FRAMER_CMS_SYNC_ENABLED: booleanFromEnvironment.default(false),
+    FRAMER_CMS_PUBLISH_MODE: z.enum(["draft", "published"]).default("draft"),
+    FRAMER_API_TOKEN: optionalSecret,
+    FRAMER_PROJECT_ID: optionalSecret,
+    FRAMER_COLLECTION_ID: optionalSecret,
   })
   .strict()
   .superRefine((config, context) => {
@@ -172,6 +177,21 @@ export const ConfigSchema = z
         path: ["SCREENPLAY_SCORING_MODE"],
         message: "The production configuration requires production scoring mode.",
       });
+    }
+    if (config.FRAMER_CMS_SYNC_ENABLED) {
+      for (const key of [
+        "FRAMER_API_TOKEN",
+        "FRAMER_PROJECT_ID",
+        "FRAMER_COLLECTION_ID",
+      ] as const) {
+        if (!config[key]) {
+          context.addIssue({
+            code: "custom",
+            path: [key],
+            message: `${key} is required when Framer CMS synchronization is enabled.`,
+          });
+        }
+      }
     }
     try {
       const pricing = JSON.parse(config.MODEL_PRICING_JSON) as unknown;

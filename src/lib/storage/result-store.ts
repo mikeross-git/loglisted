@@ -20,6 +20,7 @@ export const StoredResultSchema = z
         outputTokens: z.number().int().nonnegative(),
         estimatedCostUsd: z.number().nonnegative(),
         approvedMetadata: z.record(z.string(), z.unknown()),
+        submissionLogline: z.string().max(1000).optional(),
         submissionContact: z
           .object({
             firstName: WriterNameSchema,

@@ -138,6 +138,19 @@ function analyzeRequest(pdf: Uint8Array, cookie: string, token: string): Request
 }
 
 describe("complete screenplay analysis endpoint", () => {
+  it("returns a completed score when a secondary CMS synchronization fails", async () => {
+    const setupValue = await setup();
+    setupValue.dependencies.onSuccessfulResult = vi.fn(() =>
+      Promise.reject(new Error("CMS unavailable")),
+    );
+    const response = await postAnalyze(
+      analyzeRequest(setupValue.pdf, setupValue.created.cookie, setupValue.issued.token),
+      setupValue.dependencies,
+    );
+    expect(response.status).toBe(200);
+    expect(setupValue.dependencies.onSuccessfulResult).toHaveBeenCalledOnce();
+  });
+
   it("runs the normal pipeline and returns scores without prose", async () => {
     const setupValue = await setup();
     const cacheWrites = vi.spyOn(setupValue.dependencies.cache, "set");
