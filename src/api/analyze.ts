@@ -46,6 +46,7 @@ export interface AnalyzeRejectionDiagnostic {
   stage: AnalyzeStage;
   errorClass: string;
   errorCode: string;
+  reasonCode?: string;
   status: number;
 }
 
@@ -137,6 +138,9 @@ export async function postAnalyze(
         stage,
         errorClass: error instanceof Error ? error.name : "UnknownError",
         errorCode: error instanceof AppError ? error.code : "UNEXPECTED_ANALYSIS_ERROR",
+        ...(error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
+          ? { reasonCode: error.details["reasonCode"] }
+          : {}),
         status,
       });
     } catch {

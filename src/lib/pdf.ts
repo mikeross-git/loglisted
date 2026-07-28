@@ -80,15 +80,23 @@ export async function extractPdf(
   const limits = PdfExtractionOptionsSchema.parse(options);
 
   if (buffer.byteLength === 0) {
-    throw new UnsupportedFileError("Blank file.");
+    throw new UnsupportedFileError("Blank file.", {
+      details: { reasonCode: "pdf_blank_file" },
+    });
   }
   if (buffer.byteLength > limits.maxFileBytes) {
     throw new UnsupportedFileError("PDF exceeds configured byte limit.", {
-      details: { fileSize: buffer.byteLength, maxFileBytes: limits.maxFileBytes },
+      details: {
+        reasonCode: "pdf_file_size_limit",
+        fileSize: buffer.byteLength,
+        maxFileBytes: limits.maxFileBytes,
+      },
     });
   }
   if (!hasPdfSignature(buffer)) {
-    throw new UnsupportedFileError("File signature is not PDF.");
+    throw new UnsupportedFileError("File signature is not PDF.", {
+      details: { reasonCode: "pdf_signature_invalid" },
+    });
   }
 
   const warnings: string[] = [];
@@ -104,7 +112,10 @@ export async function extractPdf(
     }).promise;
   } catch (error) {
     if (looksEncrypted(buffer, error)) {
-      throw new UnsupportedFileError("Encrypted PDF cannot be read.", { cause: error });
+      throw new UnsupportedFileError("Encrypted PDF cannot be read.", {
+        cause: error,
+        details: { reasonCode: "pdf_encrypted" },
+      });
     }
     throw new ParsingFailureError("Malformed or unreadable PDF.", { cause: error });
   }
@@ -112,7 +123,11 @@ export async function extractPdf(
   try {
     if (document.numPages > limits.maxPages) {
       throw new UnsupportedFileError("PDF exceeds configured page limit.", {
-        details: { pageCount: document.numPages, maxPages: limits.maxPages },
+        details: {
+          reasonCode: "pdf_page_limit",
+          pageCount: document.numPages,
+          maxPages: limits.maxPages,
+        },
       });
     }
 
@@ -132,11 +147,17 @@ export async function extractPdf(
     ).length;
 
     if (textLength === 0 || readablePageCount === 0) {
-      throw new UnsupportedFileError("PDF contains no readable text layer.");
+      throw new UnsupportedFileError("PDF contains no readable text layer.", {
+        details: { reasonCode: "pdf_no_readable_text" },
+      });
     }
     if (textLength < limits.minimumReadableTextLength) {
       throw new UnsupportedFileError("PDF contains too little readable text.", {
-        details: { textLength, minimumReadableTextLength: limits.minimumReadableTextLength },
+        details: {
+          reasonCode: "pdf_insufficient_readable_text",
+          textLength,
+          minimumReadableTextLength: limits.minimumReadableTextLength,
+        },
       });
     }
 
