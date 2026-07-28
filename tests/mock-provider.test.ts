@@ -84,6 +84,27 @@ describe("mock LLM provider", () => {
     expect(first.providerRequestId).toMatch(/^mock-/);
   });
 
+  it("keeps long real-world scene headings within the summary schema limits", async () => {
+    const longHeading =
+      "INT. THE EXTREMELY LARGE ABANDONED INDUSTRIAL WAREHOUSE BESIDE THE RIVER - NIGHT";
+    const response = await new MockLlmProvider({
+      fixture: "successful_pilot",
+    }).generateStructured({
+      ...summaryRequest,
+      userPayload: {
+        ...summaryRequest.userPayload,
+        excerpt: `${longHeading}\nALEX\nWe should leave.`,
+      },
+      context: {
+        ...summaryRequest.context,
+        sceneHeadings: [longHeading],
+      },
+    });
+
+    expect(ChunkSummarySchema.safeParse(response.output).success).toBe(true);
+    expect(response.output.productionElements.locations[0]?.split(/\s+/)).toHaveLength(8);
+  });
+
   it("returns stable file-hash-based scores and named score fixtures", async () => {
     const feature = new MockLlmProvider({ fixture: "successful_feature" });
     const first = await feature.generateStructured(scoreRequest);

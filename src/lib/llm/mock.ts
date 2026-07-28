@@ -59,20 +59,29 @@ function unique(values: readonly string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
+function limitWords(value: string, maximum: number): string {
+  return value.trim().split(/\s+/).filter(Boolean).slice(0, maximum).join(" ");
+}
+
 function chunkSummary(request: StructuredOutputRequest<unknown>): unknown {
   const excerpt = excerptFrom(request);
   const lines = excerpt.split(/\r?\n/).map((line) => line.trim());
-  const headings = unique([
-    ...(request.context?.sceneHeadings ?? []),
-    ...lines.filter((line) => /^(?:INT\.?|EXT\.?|INT\.?\/EXT\.?|I\/E\.?)\s+/i.test(line)),
-  ]).slice(0, 3);
-  const characters = unique([
-    ...(request.context?.characterNames ?? []),
-    ...lines.filter(
-      (line) =>
-        /^[A-Z][A-Z0-9 .'\-()]{1,29}$/.test(line) && !/^(?:INT|EXT|ACT|FADE|CUT|THE)\b/.test(line),
-    ),
-  ]).slice(0, 6);
+  const headings = unique(
+    [
+      ...(request.context?.sceneHeadings ?? []),
+      ...lines.filter((line) => /^(?:INT\.?|EXT\.?|INT\.?\/EXT\.?|I\/E\.?)\s+/i.test(line)),
+    ].map((heading) => limitWords(heading, 8)),
+  ).slice(0, 3);
+  const characters = unique(
+    [
+      ...(request.context?.characterNames ?? []),
+      ...lines.filter(
+        (line) =>
+          /^[A-Z][A-Z0-9 .'\-()]{1,29}$/.test(line) &&
+          !/^(?:INT|EXT|ACT|FADE|CUT|THE)\b/.test(line),
+      ),
+    ].map((character) => character.slice(0, 100)),
+  ).slice(0, 6);
   const keywords = Object.entries(
     excerpt
       .toLowerCase()
@@ -105,8 +114,13 @@ function chunkSummary(request: StructuredOutputRequest<unknown>): unknown {
           ? `Acts on the central conflict in chunk ${chunkIndex}.`
           : `Responds to events in chunk ${chunkIndex}.`,
     })),
-    conflicts: characters.length >= 2 ? [`${characters[0]} conflicts with ${characters[1]}.`] : [],
-    setupPayoff: act ? [`${act} contains an unresolved story thread.`] : [],
+    conflicts:
+      characters.length >= 2
+        ? [limitWords(`${characters[0]} conflicts with ${characters[1]}.`, 24)]
+        : [],
+    setupPayoff: act
+      ? [limitWords(`${act} contains an unresolved story thread.`, 24)]
+      : [],
     toneTags: keywords.slice(0, 3),
     dialogueTraits: characters.length ? ["character-specific", "concise"] : [],
     themes: keywords.slice(3, 5),
