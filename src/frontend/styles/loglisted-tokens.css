@@ -1,0 +1,45 @@
+:root {
+  --loglisted-page-background: #080a0a;
+  --loglisted-card-background: #11100e;
+  --loglisted-elevated-surface: #191612;
+  --loglisted-primary-text: #eee3d2;
+  --loglisted-muted-text: #b8ad9c;
+  --loglisted-accent: #d6a85d;
+  --loglisted-border: #3a3329;
+  --loglisted-error: #f19b88;
+  --loglisted-success: #9fc99b;
+  --loglisted-input-background: #eee3d2;
+  --loglisted-input-text: #15120e;
+
+  --loglisted-font-family: "Cutive", Georgia, "Times New Roman", serif;
+  --loglisted-heading-font-family: "Cutive", Georgia, "Times New Roman", serif;
+  --loglisted-font-size-xs: 0.75rem;
+  --loglisted-font-size-sm: 0.875rem;
+  --loglisted-font-size-md: 1rem;
+  --loglisted-font-size-lg: 1.125rem;
+  --loglisted-font-size-xl: clamp(1.75rem, 4vw, 2.5rem);
+  --loglisted-line-height-tight: 1.2;
+  --loglisted-line-height-normal: 1.65;
+
+  --loglisted-space-1: 0.25rem;
+  --loglisted-space-2: 0.5rem;
+  --loglisted-space-3: 0.75rem;
+  --loglisted-space-4: 1rem;
+  --loglisted-space-5: 1.5rem;
+  --loglisted-space-6: 2rem;
+  --loglisted-space-7: 3rem;
+
+  --loglisted-radius-sm: 0.4rem;
+  --loglisted-radius-md: 0.7rem;
+  --loglisted-radius-lg: 1rem;
+  --loglisted-shadow-card: 0 24px 70px rgb(0 0 0 / 32%);
+  --loglisted-shadow-focus: 0 0 0 3px rgb(214 168 93 / 28%);
+
+  --loglisted-input-height: 3.25rem;
+  --loglisted-button-height: 3.25rem;
+  --loglisted-content-width: 48rem;
+  --loglisted-page-width: 76rem;
+
+  --loglisted-breakpoint-mobile: 30rem;
+  --loglisted-breakpoint-tablet: 48rem;
+}

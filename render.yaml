@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: loglisted-staging-api
+    runtime: node
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:staging
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: staging
+      - key: SCREENPLAY_SCORING_MODE
+        value: mock
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: MOCK_LLM_SCENARIO
+        value: successful_pilot
+      - key: DRY_RUN
+        value: "true"
+      - key: TURNSTILE_MODE
+        value: managed
+      - key: TURNSTILE_SITE_KEY
+        sync: false
+      - key: TURNSTILE_SECRET_KEY
+        sync: false
+      - key: TURNSTILE_EXPECTED_HOSTNAMES
+        sync: false
+      - key: TURNSTILE_EXPECTED_ACTION
+        value: screenplay_upload
+      - key: SESSION_SIGNING_SECRET
+        generateValue: true
+      - key: DEVICE_HMAC_SECRET
+        generateValue: true
+      - key: CSRF_SIGNING_SECRET
+        generateValue: true
+      - key: IP_HMAC_SECRET
+        generateValue: true
+      - key: RESULT_TOKEN_SIGNING_SECRET
+        generateValue: true
+      - key: DELETION_TOKEN_SIGNING_SECRET
+        generateValue: true
+      - key: UPLOAD_TOKEN_SIGNING_SECRET
+        generateValue: true
+      - key: STORAGE_DRIVER
+        value: memory
+      - key: RAW_PDF_PERSISTENCE_ENABLED
+        value: "false"
+      - key: RAW_TEXT_PERSISTENCE_ENABLED
+        value: "false"
