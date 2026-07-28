@@ -194,4 +194,21 @@ describe("upload authorization endpoint", () => {
       },
     });
   });
+
+  it("reports a content-safe internal rejection stage without changing the public error", async () => {
+    const { created, dependencies } = setup();
+    const diagnostics: { stage: string; errorClass: string; status: number }[] = [];
+    const response = await postUploadAuthorize(request(created.cookie, "bad"), {
+      ...dependencies,
+      onRejection: (diagnostic) => diagnostics.push(diagnostic),
+    });
+    expect(response.status).toBe(403);
+    expect(diagnostics).toEqual([{ stage: "csrf", errorClass: "AuthorizationError", status: 403 }]);
+    expect(await response.json()).toEqual({
+      error: {
+        code: "UPLOAD_AUTHORIZATION_REJECTED",
+        message: "The upload could not be authorized.",
+      },
+    });
+  });
 });

@@ -16,6 +16,7 @@ import { VersionedCache } from "./lib/cache.js";
 import { DeletionTokenManager } from "./lib/deletion-token.js";
 import type { LlmProvider } from "./lib/llm/provider.js";
 import { MockLlmProvider, type MockLlmProviderOptions } from "./lib/llm/mock.js";
+import { SafeLogger } from "./lib/logger.js";
 import { parseModelPricing } from "./lib/model-pricing.js";
 import type { OriginPolicy } from "./lib/origin.js";
 import { AnonymousQuotas } from "./lib/quotas.js";
@@ -159,6 +160,7 @@ export function createStagingApp(
     allowedContentTypes: ["application/json", "multipart/form-data"],
   };
   const abuseStore = new MemoryAbuseStore();
+  const logger = new SafeLogger();
   const cacheStore = new MemoryCacheStore();
   const cache = new VersionedCache(cacheStore);
   const results = new MemoryResultStore();
@@ -296,6 +298,14 @@ export function createStagingApp(
           telemetryTtlMs: config.ABUSE_TELEMETRY_TTL_SECONDS * 1_000,
           maxFileBytes: config.MAX_PDF_BYTES,
           authorizationAttemptsPer10Minutes: config.AUTHORIZATION_ATTEMPTS_PER_10_MINUTES,
+          onRejection: ({ stage, errorClass, status }) => {
+            logger.warn("staging.upload_authorization_rejected", {
+              processingStage: stage,
+              errorClass,
+              status,
+              environment: "staging",
+            });
+          },
           findCachedResult: async (fileHash, sessionId) => {
             const stored = await results.findByFileAndSession(fileHash, sessionId);
             if (!stored) return null;

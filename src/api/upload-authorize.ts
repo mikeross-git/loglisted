@@ -44,6 +44,26 @@ export interface UploadAuthorizeDependencies {
   authorizationAttemptsPer10Minutes?: number;
   aiProcessingPolicyVersion?: string;
   privacyNoticeVersion?: string;
+  onRejection?: (diagnostic: UploadAuthorizationRejectionDiagnostic) => void;
+}
+
+export type UploadAuthorizationStage =
+  | "origin"
+  | "session"
+  | "csrf"
+  | "input"
+  | "rate_limit"
+  | "timing"
+  | "turnstile"
+  | "quota"
+  | "risk"
+  | "cache_lookup"
+  | "token_issue";
+
+export interface UploadAuthorizationRejectionDiagnostic {
+  stage: UploadAuthorizationStage;
+  errorClass: string;
+  status: number;
 }
 
 export async function postUploadAuthorize(
@@ -51,15 +71,19 @@ export async function postUploadAuthorize(
   dependencies: UploadAuthorizeDependencies,
 ): Promise<Response> {
   let origin: string | undefined;
+  let stage: UploadAuthorizationStage = "origin";
   try {
     ({ origin } = validateSiteOrigin(request, dependencies.originPolicy));
+    stage = "session";
     const session = dependencies.sessions.parseCookieHeader(request.headers.get("cookie"));
+    stage = "csrf";
     validateCsrfToken(
       request.headers.get("x-csrf-token"),
       dependencies.csrfSigningSecret,
       session.anonymousSessionId,
       session.csrfSecret,
     );
+    stage = "input";
     const input = UploadAuthorizationInputSchema.parse(await request.json());
     if (input.fileSize > (dependencies.maxFileBytes ?? 15 * 1024 * 1024)) {
       throw new AuthorizationError("Submission rejected.");
@@ -74,6 +98,7 @@ export async function postUploadAuthorize(
     const now = dependencies.now?.() ?? new Date();
     const telemetryTtl = dependencies.telemetryTtlMs ?? 90 * 24 * 60 * 60_000;
 
+    stage = "rate_limit";
     const [ipAttempts, sessionAttempts] = await Promise.all([
       dependencies.rateLimiter.check(
         `authorize:ip:${hashedIp}`,
@@ -91,11 +116,13 @@ export async function postUploadAuthorize(
         60_000,
       ),
     ]);
+    stage = "timing";
     const timing = validateSubmissionTiming(input, now);
     if (timing.honeypotCompleted) throw new AuthorizationError("Submission rejected.");
     if (timing.futureTimestamps || timing.staleTimestamps) {
       throw new AuthorizationError("Submission rejected.");
     }
+    stage = "turnstile";
     if ((await dependencies.abuseStore.getCount(`turnstile-fail:${hashedIp}`)) >= 3) {
       throw new AuthorizationError("Submission rejected.");
     }
@@ -109,6 +136,7 @@ export async function postUploadAuthorize(
       if (failures >= 3) throw new AuthorizationError("Submission rejected.", { cause: error });
       throw error;
     }
+    stage = "quota";
     await dependencies.quotas.assertCompletedQuota(session.anonymousSessionId, hashedIp);
     const [fileSessionCount, deviceCount, ipCount, duplicateAttempts] = await Promise.all([
       dependencies.abuseStore.addDistinct(
@@ -135,6 +163,7 @@ export async function postUploadAuthorize(
       ),
     ]);
     if (!duplicateAttempts.allowed) throw new AuthorizationError("Submission rejected.");
+    stage = "risk";
     const risk = assessRisk({
       validTurnstile: true,
       sessionOlderThan24Hours: now.getTime() / 1_000 - session.issuedAt > 86_400,
@@ -156,6 +185,7 @@ export async function postUploadAuthorize(
     if (suppliedDeviceHash !== session.deviceIdHash) {
       throw new AuthorizationError("Submission rejected.");
     }
+    stage = "cache_lookup";
     const cached = await dependencies.findCachedResult?.(
       input.fileHash,
       session.anonymousSessionId,
@@ -175,6 +205,7 @@ export async function postUploadAuthorize(
         },
       );
     }
+    stage = "token_issue";
     const issued = dependencies.uploadTokens.issue({
       anonymousSessionId: session.anonymousSessionId,
       deviceIdHash: session.deviceIdHash,
@@ -202,6 +233,15 @@ export async function postUploadAuthorize(
     );
   } catch (error) {
     const status = error instanceof AppError ? error.statusCode : 400;
+    try {
+      dependencies.onRejection?.({
+        stage,
+        errorClass: error instanceof Error ? error.name : "UnknownError",
+        status,
+      });
+    } catch {
+      // Diagnostics must never change the public authorization response.
+    }
     return Response.json(
       {
         error: {
