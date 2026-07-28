@@ -1,13 +1,4 @@
-import { z } from "zod";
-
-export const ProjectFormatSchema = z.enum([
-  "feature",
-  "halfHourPilot",
-  "hourPilot",
-  "short",
-  "unknown",
-]);
-export type ProjectFormat = z.infer<typeof ProjectFormatSchema>;
+export type ProjectFormat = "feature" | "halfHourPilot" | "hourPilot" | "short" | "unknown";
 
 export interface ProjectForm {
   firstName: string;
@@ -49,37 +40,103 @@ export interface UploadAuthorizationResponse {
   resultId?: string;
 }
 
-export const CategoryScoresSchema = z
-  .object({
-    premise: z.number(),
-    story: z.number(),
-    structure: z.number(),
-    characters: z.number(),
-    dialogue: z.number(),
-    pacing: z.number(),
-    theme: z.number(),
-    tone: z.number(),
-    marketability: z.number(),
-    craft: z.number(),
-  })
-  .strict();
+export interface CategoryScores {
+  premise: number;
+  story: number;
+  structure: number;
+  characters: number;
+  dialogue: number;
+  pacing: number;
+  theme: number;
+  tone: number;
+  marketability: number;
+  craft: number;
+}
 
-export const AnalysisResultSchema = z
-  .object({
-    resultId: z.string().optional(),
-    resultAccessToken: z.string().optional(),
-    deletionToken: z.string().optional(),
-    projectTitle: z.string().optional(),
-    declaredFormat: z.string().optional(),
-    declaredGenre: z.string().optional(),
-    categoryScores: CategoryScoresSchema,
-    overallScore: z.number(),
-    completedAt: z.string().optional(),
-    evaluationMode: z.literal("mock").optional(),
-  })
-  .strict();
+export interface AnalysisResult {
+  resultId?: string;
+  resultAccessToken?: string;
+  deletionToken?: string;
+  projectTitle?: string;
+  declaredFormat?: string;
+  declaredGenre?: string;
+  categoryScores: CategoryScores;
+  overallScore: number;
+  completedAt?: string;
+  evaluationMode?: "mock";
+}
 
-export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
+const categoryNames = [
+  "premise",
+  "story",
+  "structure",
+  "characters",
+  "dialogue",
+  "pacing",
+  "theme",
+  "tone",
+  "marketability",
+  "craft",
+] as const;
+
+function optionalString(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") throw new Error(`Invalid analysis result field: ${key}`);
+  return value;
+}
+
+export function parseAnalysisResult(input: unknown): AnalysisResult {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    throw new Error("Invalid analysis result.");
+  }
+  const record = input as Record<string, unknown>;
+  const rawScores = record["categoryScores"];
+  if (typeof rawScores !== "object" || rawScores === null || Array.isArray(rawScores)) {
+    throw new Error("Invalid analysis category scores.");
+  }
+  const scoreRecord = rawScores as Record<string, unknown>;
+  const categoryScores = {} as CategoryScores;
+  for (const category of categoryNames) {
+    const score = scoreRecord[category];
+    if (typeof score !== "number" || !Number.isFinite(score) || score < 1 || score > 10) {
+      throw new Error(`Invalid analysis score: ${category}`);
+    }
+    categoryScores[category] = score;
+  }
+  const overallScore = record["overallScore"];
+  if (
+    typeof overallScore !== "number" ||
+    !Number.isFinite(overallScore) ||
+    overallScore < 1 ||
+    overallScore > 10
+  ) {
+    throw new Error("Invalid overall score.");
+  }
+  const evaluationMode = record["evaluationMode"];
+  if (evaluationMode !== undefined && evaluationMode !== "mock") {
+    throw new Error("Invalid evaluation mode.");
+  }
+  const result: AnalysisResult = {
+    categoryScores,
+    overallScore,
+  };
+  const optionalKeys = [
+    "resultId",
+    "resultAccessToken",
+    "deletionToken",
+    "projectTitle",
+    "declaredFormat",
+    "declaredGenre",
+    "completedAt",
+  ] as const;
+  for (const key of optionalKeys) {
+    const value = optionalString(record, key);
+    if (value !== undefined) result[key] = value;
+  }
+  if (evaluationMode === "mock") result.evaluationMode = evaluationMode;
+  return result;
+}
 
 export type UploaderPhase =
   | "establishing_session"

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ScreenplayApiClient } from "../src/frontend/api-client.js";
+import { parseAnalysisResult } from "../src/frontend/types.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -65,5 +66,33 @@ describe("frontend upload authorization payload", () => {
       email: "taylor@example.com",
     });
     expect(payload.project).not.toHaveProperty("imdbUrl");
+  });
+});
+
+describe("frontend analysis response validation", () => {
+  it("accepts the complete staging response without a browser Zod dependency", () => {
+    const result = parseAnalysisResult({
+      resultId: "result-id",
+      resultAccessToken: "access-token",
+      deletionToken: "deletion-token",
+      categoryScores: {
+        premise: 7.1,
+        story: 7.2,
+        structure: 7.3,
+        characters: 7.4,
+        dialogue: 7.5,
+        pacing: 7.6,
+        theme: 7.7,
+        tone: 7.8,
+        marketability: 7.9,
+        craft: 8,
+      },
+      overallScore: 7.6,
+      evaluationMode: "mock",
+    });
+
+    expect(result.resultId).toBe("result-id");
+    expect(result.deletionToken).toBe("deletion-token");
+    expect(result.evaluationMode).toBe("mock");
   });
 });

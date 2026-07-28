@@ -1,4 +1,4 @@
-import { AnalysisResultSchema } from "./types.js";
+import { parseAnalysisResult } from "./types.js";
 import type {
   AnalysisResult,
   BrowserSession,
@@ -139,7 +139,7 @@ export class ScreenplayApiClient {
       headers: { authorization: `Bearer ${uploadToken}` },
       body: form,
     });
-    return AnalysisResultSchema.parse(await parseResponse(response));
+    return parseAnalysisResult(await parseResponse(response));
   }
 
   async getResult(resultId: string, resultAccessToken: string): Promise<AnalysisResult> {
@@ -148,7 +148,7 @@ export class ScreenplayApiClient {
       credentials: "include",
       headers: { authorization: `Bearer ${resultAccessToken}` },
     });
-    return AnalysisResultSchema.parse(await parseResponse(response));
+    return parseAnalysisResult(await parseResponse(response));
   }
 
   async deleteResult(resultId: string, deletionToken: string): Promise<void> {
