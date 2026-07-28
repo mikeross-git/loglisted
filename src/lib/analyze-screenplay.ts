@@ -52,7 +52,21 @@ export interface AnalyzePipelineDependencies {
   resultTtlSeconds?: number;
   pdfExtractionOptions?: PdfExtractionOptions;
   representativeExcerptTokenBudget?: number;
+  onProcessingStage?: (stage: AnalyzePipelineStage) => void;
 }
+
+export type AnalyzePipelineStage =
+  | "pdf_extraction"
+  | "pii_redaction"
+  | "metadata_cache"
+  | "screenplay_parsing"
+  | "chunk_cache"
+  | "chunking"
+  | "summarization"
+  | "reduction"
+  | "excerpt_sampling"
+  | "scoring"
+  | "result_persistence";
 
 export interface AnalyzePipelineResult {
   result: StoredResult;
@@ -79,6 +93,7 @@ export async function analyzeScreenplay(
         summaryModel: dependencies.summaryModel,
         scoringModel: dependencies.scoringModel,
       };
+      dependencies.onProcessingStage?.("pdf_extraction");
       const pdf = PdfResultSchema.parse(
         await extractPdf(
           pdfBuffer,
@@ -87,13 +102,16 @@ export async function analyzeScreenplay(
           dependencies.pdfExtractionOptions,
         ),
       );
+      dependencies.onProcessingStage?.("pii_redaction");
       const redacted = redactTitlePagePii(pdf.extractedText, pdf.textByPage);
+      dependencies.onProcessingStage?.("metadata_cache");
       let screenplay = await dependencies.cache.get(
         "screenplay_metadata",
         context,
         ParsedScreenplaySchema,
       );
       if (!screenplay) {
+        dependencies.onProcessingStage?.("screenplay_parsing");
         screenplay = parseScreenplay({
           extractedText: redacted.redactedModelText,
           textByPage: redacted.redactedTextByPage,
@@ -114,12 +132,15 @@ export async function analyzeScreenplay(
         );
       }
       const ChunksSchema = z.array(ScreenplayChunkSchema);
+      dependencies.onProcessingStage?.("chunk_cache");
       let chunks = await dependencies.cache.get("chunks", context, ChunksSchema);
       if (!chunks) {
+        dependencies.onProcessingStage?.("chunking");
         chunks = chunkScreenplay(screenplay);
         await dependencies.cache.set("chunks", context, ChunksSchema, chunks);
       }
       const budget = dependencies.createBudget();
+      dependencies.onProcessingStage?.("summarization");
       const summaries = await summarizeChunks(chunks, {
         provider: dependencies.provider,
         pricing: dependencies.pricing,
@@ -136,6 +157,7 @@ export async function analyzeScreenplay(
         ReducedScreenplaySchema,
       );
       if (!reduced) {
+        dependencies.onProcessingStage?.("reduction");
         reduced = reduceScreenplaySummaries(summaries, screenplay.objective, {
           format: screenplay.inferred.detectedFormat.value,
         });
@@ -147,11 +169,13 @@ export async function analyzeScreenplay(
         );
       }
       const ExcerptsSchema = z.array(RepresentativeExcerptSchema);
+      dependencies.onProcessingStage?.("excerpt_sampling");
       const excerpts = ExcerptsSchema.parse(
         sampleRepresentativeExcerpts(screenplay, {
           maximumTokens: dependencies.representativeExcerptTokenBudget ?? 4_000,
         }),
       );
+      dependencies.onProcessingStage?.("scoring");
       const score = await scoreScreenplay(reduced, screenplay.objective, excerpts, {
         provider: dependencies.provider,
         pricing: dependencies.pricing,
@@ -198,6 +222,7 @@ export async function analyzeScreenplay(
         },
       };
       StoredResultSchema.parse(result);
+      dependencies.onProcessingStage?.("result_persistence");
       await dependencies.results.put(result, dependencies.resultTtlSeconds ?? 30 * 86_400);
       await dependencies.cache.set("final_score", context, StoredResultSchema, result);
       return { value: result, resultKey: result.resultId };

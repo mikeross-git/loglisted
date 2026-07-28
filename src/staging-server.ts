@@ -356,6 +356,15 @@ export function createStagingApp(
             trustedProxy: { trustedProxyIps: [] },
             ipHmacSecret: config.IP_HMAC_SECRET,
             analysisAttemptsPer10Minutes: config.ANALYSIS_ATTEMPTS_PER_10_MINUTES,
+            onRejection: ({ stage, errorClass, errorCode, status }) => {
+              logger.warn("staging.analysis_rejected", {
+                processingStage: stage,
+                errorClass,
+                errorCode,
+                status,
+                environment: "staging",
+              });
+            },
             ...pipelineDependencies,
           }),
           response,

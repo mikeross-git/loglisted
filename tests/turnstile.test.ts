@@ -18,6 +18,21 @@ function verifier(response: unknown) {
   });
 }
 
+function verifierWithStatus(response: unknown, status: number) {
+  return new TurnstileVerifier(new MemoryAbuseStore(), {
+    secretKey: "secret",
+    expectedHostnames: ["site.example"],
+    expectedAction: "screenplay_upload",
+    fetchImplementation: () =>
+      Promise.resolve(
+        new Response(JSON.stringify(response), {
+          status,
+          headers: { "content-type": "application/json" },
+        }),
+      ),
+  });
+}
+
 describe("Turnstile verification", () => {
   it("accepts a valid fresh token once", async () => {
     const turnstile = verifier({
@@ -46,6 +61,20 @@ describe("Turnstile verification", () => {
 
     await expect(turnstile.verify("sensitive-token")).rejects.toMatchObject({
       details: { reasonCode: "siteverify_rejected:invalid-input-secret" },
+    });
+  });
+
+  it("reports provider error codes returned with an HTTP error status", async () => {
+    const turnstile = verifierWithStatus(
+      {
+        success: false,
+        "error-codes": ["invalid-input-secret"],
+      },
+      400,
+    );
+
+    await expect(turnstile.verify("sensitive-token")).rejects.toMatchObject({
+      details: { reasonCode: "siteverify_http_400:invalid-input-secret" },
     });
   });
 

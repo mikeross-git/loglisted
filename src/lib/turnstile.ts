@@ -48,12 +48,24 @@ export class TurnstileVerifier {
           signal: controller.signal,
         },
       );
+      const responseBody: unknown = await response.json().catch(() => null);
+      const parsedResult = TurnstileResponseSchema.safeParse(responseBody);
       if (!response.ok) {
+        const joinedProviderCodes = parsedResult.success
+          ? parsedResult.data["error-codes"]?.join(".")
+          : undefined;
+        const providerCodes =
+          joinedProviderCodes && joinedProviderCodes.length > 0 ? joinedProviderCodes : "unknown";
         throw new AuthorizationError("Turnstile service rejected the request.", {
-          details: { reasonCode: `siteverify_http_${response.status}` },
+          details: { reasonCode: `siteverify_http_${response.status}:${providerCodes}` },
         });
       }
-      const result = TurnstileResponseSchema.parse(await response.json());
+      if (!parsedResult.success) {
+        throw new AuthorizationError("Turnstile service returned an invalid response.", {
+          details: { reasonCode: "siteverify_invalid_response" },
+        });
+      }
+      const result = parsedResult.data;
       if (!result.success) {
         const joinedProviderCodes = result["error-codes"]?.join(".");
         const providerCodes =

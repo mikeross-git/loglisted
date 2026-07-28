@@ -1,6 +1,10 @@
 import { calculateSha256 } from "../lib/file-hash.js";
 import { hasPdfSignature } from "../lib/file-signature.js";
-import { analyzeScreenplay, type AnalyzePipelineDependencies } from "../lib/analyze-screenplay.js";
+import {
+  analyzeScreenplay,
+  type AnalyzePipelineDependencies,
+  type AnalyzePipelineStage,
+} from "../lib/analyze-screenplay.js";
 import type { AnonymousSessionManager } from "../lib/anonymous-session.js";
 import { AppError, AuthorizationError, UnsupportedFileError } from "../lib/errors.js";
 import { hashIp, resolveClientIp, type TrustedProxyOptions } from "../lib/ip.js";
@@ -22,6 +26,27 @@ export interface AnalyzeDependencies extends AnalyzePipelineDependencies {
   ipHmacSecret: string;
   analysisAttemptsPer10Minutes?: number;
   admitGlobalCapacity?: () => Promise<void>;
+  onRejection?: (diagnostic: AnalyzeRejectionDiagnostic) => void;
+}
+
+export type AnalyzeStage =
+  | "origin"
+  | "session"
+  | "upload_token"
+  | "multipart"
+  | "file_validation"
+  | "token_consumption"
+  | "quota"
+  | "rate_limit"
+  | "concurrency"
+  | "global_capacity"
+  | AnalyzePipelineStage;
+
+export interface AnalyzeRejectionDiagnostic {
+  stage: AnalyzeStage;
+  errorClass: string;
+  errorCode: string;
+  status: number;
 }
 
 export async function postAnalyze(
@@ -31,16 +56,21 @@ export async function postAnalyze(
   let origin: string | undefined;
   let releaseConcurrency: (() => Promise<void>) | undefined;
   let uploadedBuffer: Uint8Array | undefined;
+  let stage: AnalyzeStage = "origin";
   try {
     ({ origin } = validateSiteOrigin(request, dependencies.originPolicy));
+    stage = "session";
     const session = dependencies.sessions.parseCookieHeader(request.headers.get("cookie"));
+    stage = "upload_token";
     const authorization = request.headers.get("authorization");
     if (!authorization?.startsWith("Bearer "))
       throw new AuthorizationError("Upload token missing.");
     const claims = dependencies.uploadTokens.verify(authorization.slice(7), session);
+    stage = "multipart";
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) throw new UnsupportedFileError("PDF file is missing.");
+    stage = "file_validation";
     if (file.size !== claims.fileSize || file.type !== claims.mimeType) {
       throw new UnsupportedFileError("Uploaded file does not match authorization.");
     }
@@ -49,6 +79,7 @@ export async function postAnalyze(
     if (calculateSha256(uploadedBuffer) !== claims.fileHash) {
       throw new UnsupportedFileError("Uploaded file hash does not match authorization.");
     }
+    stage = "token_consumption";
     await dependencies.uploadTokens.consume(claims);
     const clientIp = resolveClientIp(
       dependencies.directIp,
@@ -56,7 +87,9 @@ export async function postAnalyze(
       dependencies.trustedProxy,
     );
     const hashedIp = hashIp(clientIp, dependencies.ipHmacSecret);
+    stage = "quota";
     await dependencies.quotas.assertCompletedQuota(session.anonymousSessionId, hashedIp);
+    stage = "rate_limit";
     await Promise.all([
       dependencies.rateLimiter.check(
         `analyze:session:${session.anonymousSessionId}`,
@@ -69,12 +102,20 @@ export async function postAnalyze(
         10 * 60_000,
       ),
     ]);
+    stage = "concurrency";
     releaseConcurrency = await dependencies.quotas.reserveConcurrency(
       session.anonymousSessionId,
       hashedIp,
     );
+    stage = "global_capacity";
     await dependencies.admitGlobalCapacity?.();
-    const analyzed = await analyzeScreenplay(uploadedBuffer, claims, dependencies);
+    const analyzed = await analyzeScreenplay(uploadedBuffer, claims, {
+      ...dependencies,
+      onProcessingStage: (pipelineStage) => {
+        stage = pipelineStage;
+        dependencies.onProcessingStage?.(pipelineStage);
+      },
+    });
     await dependencies.quotas.recordCompleted(session.anonymousSessionId, hashedIp);
     return Response.json(
       {
@@ -91,6 +132,16 @@ export async function postAnalyze(
     );
   } catch (error) {
     const status = error instanceof AppError ? error.statusCode : 422;
+    try {
+      dependencies.onRejection?.({
+        stage,
+        errorClass: error instanceof Error ? error.name : "UnknownError",
+        errorCode: error instanceof AppError ? error.code : "UNEXPECTED_ANALYSIS_ERROR",
+        status,
+      });
+    } catch {
+      // Diagnostics must never change the public analysis response.
+    }
     return Response.json(
       { error: { code: "ANALYSIS_FAILED", message: "The screenplay could not be analyzed." } },
       {
