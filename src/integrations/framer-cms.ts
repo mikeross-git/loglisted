@@ -37,7 +37,6 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   writerName: "Writer S Name",
   email: "Email",
   test: "Test",
-  slug: "Slug",
   scriptTitle: "Script Title",
   logline: "Logline",
   overallScore: "Overall Score",
@@ -59,13 +58,18 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
 export type FramerFieldKey = keyof typeof FRAMER_FIELD_DISPLAY_NAMES;
 export type FramerFieldMap = Record<FramerFieldKey, string>;
 
-type SupportedFieldType = "boolean" | "enum" | "link" | "number" | "string";
+function cmsValidationError(message: string): Error {
+  return Object.assign(new Error(message), { status: 400 });
+}
+
+type SupportedFieldType = "boolean" | "collectionReference" | "enum" | "link" | "number" | "string";
 
 export interface CmsFieldDescriptor {
   id: string;
   name: string;
   type: string;
   cases?: readonly { id: string; name: string }[];
+  collectionId?: string;
 }
 
 export interface CmsItemDescriptor {
@@ -114,6 +118,7 @@ function fieldDescriptorFromSdkField(field: Field): CmsFieldDescriptor {
     ...(field.type === "enum"
       ? { cases: field.cases.map((enumCase) => ({ id: enumCase.id, name: enumCase.name })) }
       : {}),
+    ...(field.type === "collectionReference" ? { collectionId: field.collectionId } : {}),
   };
 }
 
@@ -125,7 +130,7 @@ export function resolveFramerFieldMap(fields: readonly CmsFieldDescriptor[]): Fr
   ][]) {
     const matches = fields.filter((field) => field.name === displayName);
     if (matches.length !== 1 || !matches[0]) {
-      throw new Error(`Framer CMS field "${displayName}" was not found exactly once.`);
+      throw cmsValidationError(`Framer CMS field "${displayName}" was not found exactly once.`);
     }
     resolved[key] = matches[0].id;
   }
@@ -133,19 +138,22 @@ export function resolveFramerFieldMap(fields: readonly CmsFieldDescriptor[]): Fr
 }
 
 export function slugifyWriterName(writerName: string, resultId: string): string {
-  const base =
-    writerName
-      .normalize("NFKD")
-      .replace(/\p{Diacritic}/gu, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "writer";
+  const base = slugBase(writerName) || "writer";
   const suffix =
     resultId
       .replace(/[^a-zA-Z0-9]/g, "")
       .toLowerCase()
       .slice(0, 8) || "result";
   return `${base}-${suffix}`;
+}
+
+function slugBase(value: string): string {
+  return value
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 const formatLabels: Record<string, string> = {
@@ -161,8 +169,11 @@ function supportedField(
   id: string,
 ): CmsFieldDescriptor & { type: SupportedFieldType } {
   const field = fields.find((candidate) => candidate.id === id);
-  if (!field || !["boolean", "enum", "link", "number", "string"].includes(field.type)) {
-    throw new Error(`Framer CMS field ${id} has an unsupported type.`);
+  if (
+    !field ||
+    !["boolean", "collectionReference", "enum", "link", "number", "string"].includes(field.type)
+  ) {
+    throw cmsValidationError(`Framer CMS field ${id} has an unsupported type.`);
   }
   return field as CmsFieldDescriptor & { type: SupportedFieldType };
 }
@@ -171,7 +182,9 @@ function enumValue(field: CmsFieldDescriptor, displayValue: string): string {
   const match = field.cases?.find(
     (candidate) => candidate.name.toLowerCase() === displayValue.toLowerCase(),
   );
-  if (!match) throw new Error(`Framer enum field "${field.name}" lacks "${displayValue}".`);
+  if (!match) {
+    throw cmsValidationError(`Framer enum field "${field.name}" lacks "${displayValue}".`);
+  }
   return match.id;
 }
 
@@ -185,17 +198,22 @@ function fieldEntry(
     return { type: "enum", value: enumValue(field, value) };
   }
   if (field.type === "link" && typeof value === "string") return { type: "link", value };
+  if (field.type === "collectionReference" && typeof value === "string") {
+    return { type: "collectionReference", value };
+  }
   if (field.type === "string") return { type: "string", value: String(value) };
-  throw new Error(`Value is incompatible with Framer field "${field.name}".`);
+  throw cmsValidationError(`Value is incompatible with Framer field "${field.name}".`);
 }
 
 function requiredContact(result: StoredResult) {
   const contact = result.internal.submissionContact;
-  if (!contact) throw new Error("Submission contact data is unavailable for CMS synchronization.");
+  if (!contact) {
+    throw cmsValidationError("Submission contact data is unavailable for CMS synchronization.");
+  }
   const writerName = `${contact.firstName.trim()} ${contact.lastName.trim()}`
     .replace(/\s+/g, " ")
     .trim();
-  if (!writerName) throw new Error("Writer name is required for CMS synchronization.");
+  if (!writerName) throw cmsValidationError("Writer name is required for CMS synchronization.");
   return { contact, writerName };
 }
 
@@ -209,11 +227,14 @@ export function buildFramerCmsItem(
   input: StoredResult,
   fields: readonly CmsFieldDescriptor[],
   publishMode: "draft" | "published",
+  referenceValues: Partial<Record<FramerFieldKey, string>> = {},
 ): BuiltFramerCmsItem {
   const result = StoredResultSchema.parse(input);
   const { contact, writerName } = requiredContact(result);
   const scriptTitle = result.projectTitle.trim();
-  if (!scriptTitle) throw new Error("Script title is required for CMS synchronization.");
+  if (!scriptTitle) {
+    throw cmsValidationError("Script title is required for CMS synchronization.");
+  }
   const map = resolveFramerFieldMap(fields);
   const slug = slugifyWriterName(writerName, result.resultId);
   const isTest = result.internal.evaluationMode === "mock";
@@ -223,7 +244,6 @@ export function buildFramerCmsItem(
     writerName,
     email: contact.email,
     test: supportedField(fields, map.test).type === "boolean" ? isTest : isTest ? "Yes" : "No",
-    slug,
     scriptTitle,
     logline: logline === "" ? undefined : logline,
     overallScore: result.overallScore,
@@ -237,7 +257,7 @@ export function buildFramerCmsItem(
     toneScore: result.categoryScores.tone,
     marketabilityScore: result.categoryScores.marketability,
     craftScore: result.categoryScores.craft,
-    genreCategory: result.declaredGenre.trim(),
+    genreCategory: referenceValues.genreCategory ?? result.declaredGenre.trim(),
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
   };
@@ -316,7 +336,31 @@ export class FramerCmsSynchronizer {
           collection.getFields(),
           collection.getItems(),
         ]);
-        const item = buildFramerCmsItem(result, fields, this.config.FRAMER_CMS_PUBLISH_MODE);
+        const fieldMap = resolveFramerFieldMap(fields);
+        const genreField = supportedField(fields, fieldMap.genreCategory);
+        let genreReferenceId: string | undefined;
+        if (genreField.type === "collectionReference") {
+          if (!genreField.collectionId) {
+            throw cmsValidationError("Genre reference collection is unavailable.");
+          }
+          const genreCollection = await connection.getCollection(genreField.collectionId);
+          if (!genreCollection) {
+            throw cmsValidationError("Genre reference collection was not found.");
+          }
+          const requestedGenreSlug = slugBase(result.declaredGenre);
+          genreReferenceId = (await genreCollection.getItems()).find(
+            (candidate) => slugBase(candidate.slug) === requestedGenreSlug,
+          )?.id;
+          if (!genreReferenceId) {
+            throw cmsValidationError("Submitted genre has no matching Framer CMS item.");
+          }
+        }
+        const item = buildFramerCmsItem(
+          result,
+          fields,
+          this.config.FRAMER_CMS_PUBLISH_MODE,
+          genreReferenceId ? { genreCategory: genreReferenceId } : {},
+        );
         const existing = existingItems.find((candidate) => candidate.slug === item.slug);
         if (existing) {
           return { status: "existing", itemId: existing.id, slug: item.slug, attempts: attempt };

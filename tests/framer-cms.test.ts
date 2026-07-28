@@ -119,6 +119,23 @@ describe("Framer CMS integration", () => {
     expect(item.draft).toBe(false);
   });
 
+  it("writes Genre Category as a Framer collection reference when configured that way", () => {
+    const referenceFields = fields().map((field) =>
+      field.name === "Genre Category"
+        ? { ...field, type: "collectionReference", collectionId: "genres-collection" }
+        : field,
+    );
+    const item = buildFramerCmsItem(result, referenceFields, "draft", {
+      genreCategory: "genre-item-comedy",
+    });
+    const genreField = referenceFields.find((field) => field.name === "Genre Category");
+    if (!genreField) throw new Error("Test genre field is missing.");
+    expect(item.fieldData[genreField.id]).toEqual({
+      type: "collectionReference",
+      value: "genre-item-comedy",
+    });
+  });
+
   it("uses a stable safe suffix and never an email in slugs", () => {
     expect(slugifyWriterName("Éva O'Neil", result.resultId)).toBe("eva-o-neil-6f83ef39");
     expect(slugifyWriterName("", result.resultId)).toBe("writer-6f83ef39");

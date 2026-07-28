@@ -51,6 +51,7 @@ try {
       ...(field.type === "enum"
         ? { cases: field.cases.map((enumCase) => ({ id: enumCase.id, name: enumCase.name })) }
         : {}),
+      ...(field.type === "collectionReference" ? { collectionId: field.collectionId } : {}),
     }));
     const mapping = resolveFramerFieldMap(fields);
     console.log(
@@ -59,7 +60,16 @@ try {
           collection: { id: collection.id, name: collection.name },
           expectedDisplayNames: FRAMER_FIELD_DISPLAY_NAMES,
           resolvedFieldMap: mapping,
-          fieldTypes: Object.fromEntries(fields.map((field) => [field.id, field.type])),
+          fieldDetails: Object.fromEntries(
+            fields.map((field) => [
+              field.id,
+              {
+                type: field.type,
+                ...(field.cases ? { cases: field.cases } : {}),
+                ...(field.collectionId ? { collectionId: field.collectionId } : {}),
+              },
+            ]),
+          ),
         },
         null,
         2,
