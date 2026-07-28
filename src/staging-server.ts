@@ -11,6 +11,7 @@ import { deleteResult, getResult } from "./api/result.js";
 import { postSession } from "./api/session.js";
 import { postUploadAuthorize } from "./api/upload-authorize.js";
 import { AnonymousSessionManager } from "./lib/anonymous-session.js";
+import type { AnalyzePipelineDependencies } from "./lib/analyze-screenplay.js";
 import { ScriptBudget } from "./lib/budget.js";
 import { VersionedCache } from "./lib/cache.js";
 import { DeletionTokenManager } from "./lib/deletion-token.js";
@@ -234,12 +235,12 @@ export function createStagingApp(
     scoringModel: "mock-scoring",
     resultTtlSeconds: config.RESULT_TTL_SECONDS,
     pdfExtractionOptions: {
-      maximumFileBytes: config.MAX_PDF_BYTES,
-      maximumPages: config.MAX_PDF_PAGES,
+      maxFileBytes: config.MAX_PDF_BYTES,
+      maxPages: config.MAX_PDF_PAGES,
       minimumReadableTextLength: config.MIN_READABLE_TEXT_LENGTH,
       lowTextPageThreshold: config.PDF_LOW_TEXT_PAGE_THRESHOLD,
     },
-  };
+  } satisfies AnalyzePipelineDependencies;
 
   const app = express();
   app.disable("x-powered-by");
