@@ -37,4 +37,36 @@ describe("Turnstile verification", () => {
   ])("rejects missing or invalid response %s", async (token, response) => {
     await expect(verifier(response).verify(token)).rejects.toBeInstanceOf(AuthorizationError);
   });
+
+  it("reports provider error codes without exposing the token", async () => {
+    const turnstile = verifier({
+      success: false,
+      "error-codes": ["invalid-input-secret"],
+    });
+
+    await expect(turnstile.verify("sensitive-token")).rejects.toMatchObject({
+      details: { reasonCode: "siteverify_rejected:invalid-input-secret" },
+    });
+  });
+
+  it("distinguishes hostname and action mismatches", async () => {
+    await expect(
+      verifier({
+        success: true,
+        hostname: "other.example",
+        action: "screenplay_upload",
+      }).verify("hostname-token"),
+    ).rejects.toMatchObject({
+      details: { reasonCode: "siteverify_hostname_mismatch" },
+    });
+    await expect(
+      verifier({
+        success: true,
+        hostname: "site.example",
+        action: "other",
+      }).verify("action-token"),
+    ).rejects.toMatchObject({
+      details: { reasonCode: "siteverify_action_mismatch" },
+    });
+  });
 });

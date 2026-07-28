@@ -64,6 +64,7 @@ export interface UploadAuthorizationRejectionDiagnostic {
   stage: UploadAuthorizationStage;
   errorClass: string;
   status: number;
+  reasonCode?: string;
 }
 
 export async function postUploadAuthorize(
@@ -238,6 +239,9 @@ export async function postUploadAuthorize(
         stage,
         errorClass: error instanceof Error ? error.name : "UnknownError",
         status,
+        ...(error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
+          ? { reasonCode: error.details["reasonCode"] }
+          : {}),
       });
     } catch {
       // Diagnostics must never change the public authorization response.

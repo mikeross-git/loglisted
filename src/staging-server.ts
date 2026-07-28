@@ -298,12 +298,13 @@ export function createStagingApp(
           telemetryTtlMs: config.ABUSE_TELEMETRY_TTL_SECONDS * 1_000,
           maxFileBytes: config.MAX_PDF_BYTES,
           authorizationAttemptsPer10Minutes: config.AUTHORIZATION_ATTEMPTS_PER_10_MINUTES,
-          onRejection: ({ stage, errorClass, status }) => {
+          onRejection: ({ stage, errorClass, status, reasonCode }) => {
             logger.warn("staging.upload_authorization_rejected", {
               processingStage: stage,
               errorClass,
               status,
               environment: "staging",
+              ...(reasonCode ? { reasonCode } : {}),
             });
           },
           findCachedResult: async (fileHash, sessionId) => {

@@ -31,7 +31,11 @@ export class TurnstileVerifier {
   }
 
   async verify(token: string | undefined): Promise<void> {
-    if (!token || token.length > 2048) throw new AuthorizationError("Turnstile validation failed.");
+    if (!token || token.length > 2048) {
+      throw new AuthorizationError("Turnstile validation failed.", {
+        details: { reasonCode: "missing_or_invalid_token" },
+      });
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs ?? 10_000);
     try {
@@ -44,15 +48,34 @@ export class TurnstileVerifier {
           signal: controller.signal,
         },
       );
-      if (!response.ok) throw new AuthorizationError("Turnstile service rejected the request.");
+      if (!response.ok) {
+        throw new AuthorizationError("Turnstile service rejected the request.", {
+          details: { reasonCode: `siteverify_http_${response.status}` },
+        });
+      }
       const result = TurnstileResponseSchema.parse(await response.json());
-      if (
-        !result.success ||
-        !result.hostname ||
-        !this.options.expectedHostnames.includes(result.hostname) ||
-        result.action !== this.options.expectedAction
-      ) {
-        throw new AuthorizationError("Turnstile validation failed.");
+      if (!result.success) {
+        const joinedProviderCodes = result["error-codes"]?.join(".");
+        const providerCodes =
+          joinedProviderCodes && joinedProviderCodes.length > 0 ? joinedProviderCodes : undefined;
+        throw new AuthorizationError("Turnstile validation failed.", {
+          details: { reasonCode: `siteverify_rejected:${providerCodes ?? "unspecified"}` },
+        });
+      }
+      if (!result.hostname) {
+        throw new AuthorizationError("Turnstile validation failed.", {
+          details: { reasonCode: "siteverify_missing_hostname" },
+        });
+      }
+      if (!this.options.expectedHostnames.includes(result.hostname.toLowerCase())) {
+        throw new AuthorizationError("Turnstile validation failed.", {
+          details: { reasonCode: "siteverify_hostname_mismatch" },
+        });
+      }
+      if (result.action !== this.options.expectedAction) {
+        throw new AuthorizationError("Turnstile validation failed.", {
+          details: { reasonCode: "siteverify_action_mismatch" },
+        });
       }
       const tokenHash = createHash("sha256").update(token).digest("hex");
       if (
@@ -61,7 +84,9 @@ export class TurnstileVerifier {
           this.options.tokenTtlMs ?? 5 * 60_000,
         ))
       ) {
-        throw new AuthorizationError("Turnstile token was already used.");
+        throw new AuthorizationError("Turnstile token was already used.", {
+          details: { reasonCode: "turnstile_token_reused" },
+        });
       }
     } catch (error) {
       if (error instanceof AuthorizationError) throw error;
