@@ -154,7 +154,7 @@ describe("Framer CMS integration", () => {
     expect(connector).not.toHaveBeenCalled();
   });
 
-  it("creates once and treats the stable slug as an existing idempotent item", async () => {
+  it("creates once and updates the stable existing item without duplicating it", async () => {
     const added: CollectionItemInput[] = [];
     const existing: { id: string; slug: string }[] = [];
     const connection: FramerCmsConnectionAdapter = {
@@ -183,8 +183,12 @@ describe("Framer CMS integration", () => {
       () => Promise.resolve(connection),
     );
     expect((await sync.syncResultToFramerCms(result)).status).toBe("created");
-    expect((await sync.syncResultToFramerCms(result)).status).toBe("existing");
-    expect(added).toHaveLength(1);
+    expect((await sync.syncResultToFramerCms(result)).status).toBe("updated");
+    expect(added).toHaveLength(2);
+    expect(added[1]).toMatchObject({
+      id: "framer-item-1",
+      slug: "jane-doe-6f83ef39",
+    });
   });
 
   it("retries transient errors only and never retries permanent validation errors", async () => {

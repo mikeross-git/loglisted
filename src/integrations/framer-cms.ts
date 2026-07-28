@@ -102,7 +102,12 @@ const defaultConnector: FramerCmsConnector = async (projectId, token) => {
       return {
         getFields: async () => (await collection.getFields()).map(fieldDescriptorFromSdkField),
         getItems: async () =>
-          (await collection.getItems()).map((item) => ({ id: item.id, slug: item.slug })),
+          (await collection.getItems()).map((item) => ({
+            // Collection references require Framer's node ID. The legacy `id`
+            // accessor may represent an external ID for managed collections.
+            id: item.nodeId,
+            slug: item.slug,
+          })),
         addItems: (items) => collection.addItems(items),
       };
     },
@@ -274,7 +279,7 @@ export function buildFramerCmsItem(
 }
 
 export interface FramerCmsSyncResult {
-  status: "disabled" | "existing" | "created";
+  status: "disabled" | "updated" | "created";
   itemId?: string;
   slug?: string;
   attempts: number;
@@ -363,7 +368,15 @@ export class FramerCmsSynchronizer {
         );
         const existing = existingItems.find((candidate) => candidate.slug === item.slug);
         if (existing) {
-          return { status: "existing", itemId: existing.id, slug: item.slug, attempts: attempt };
+          await collection.addItems([
+            {
+              id: existing.id,
+              slug: item.slug,
+              fieldData: item.fieldData,
+              draft: item.draft,
+            },
+          ]);
+          return { status: "updated", itemId: existing.id, slug: item.slug, attempts: attempt };
         }
         await collection.addItems([
           { slug: item.slug, fieldData: item.fieldData, draft: item.draft },

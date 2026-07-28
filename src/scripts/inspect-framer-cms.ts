@@ -54,6 +54,23 @@ try {
       ...(field.type === "collectionReference" ? { collectionId: field.collectionId } : {}),
     }));
     const mapping = resolveFramerFieldMap(fields);
+    const referenceCollections: Record<
+      string,
+      { id: string; name: string; items: { nodeId: string; slug: string }[] }
+    > = {};
+    for (const field of fields) {
+      if (!field.collectionId || referenceCollections[field.collectionId]) continue;
+      const referenceCollection = await framer.getCollection(field.collectionId);
+      if (!referenceCollection) continue;
+      referenceCollections[field.collectionId] = {
+        id: referenceCollection.id,
+        name: referenceCollection.name,
+        items: (await referenceCollection.getItems()).map((item) => ({
+          nodeId: item.nodeId,
+          slug: item.slug,
+        })),
+      };
+    }
     console.log(
       JSON.stringify(
         {
@@ -70,6 +87,7 @@ try {
               },
             ]),
           ),
+          referenceCollections,
         },
         null,
         2,
