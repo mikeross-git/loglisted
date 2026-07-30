@@ -125,13 +125,21 @@ export async function postAnalyze(
       // A secondary integration must never invalidate a completed score.
     }
     await dependencies.quotas.recordCompleted(session.anonymousSessionId, hashedIp);
+    const pageCount = analyzed.result.internal.approvedMetadata["pageCount"];
     return Response.json(
       {
         resultId: analyzed.result.resultId,
         resultAccessToken: analyzed.resultAccessToken,
         deletionToken: analyzed.deletionToken,
+        projectTitle: analyzed.result.projectTitle,
+        declaredFormat: analyzed.result.declaredFormat,
+        declaredGenre: analyzed.result.declaredGenre,
         categoryScores: analyzed.result.categoryScores,
         overallScore: analyzed.result.overallScore,
+        completedAt: analyzed.result.completedAt,
+        ...(typeof pageCount === "number" && Number.isInteger(pageCount) && pageCount > 0
+          ? { pageCount }
+          : {}),
         ...(analyzed.result.internal.evaluationMode
           ? { evaluationMode: analyzed.result.internal.evaluationMode }
           : {}),

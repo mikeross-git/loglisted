@@ -332,3 +332,34 @@ backend. Scoring continues normally. A failed sync remains retryable because the
 contains the result ID and approved submission fields; retrieving the cached result invokes the
 idempotent sync again. Framer records must be published manually unless
 `FRAMER_CMS_PUBLISH_MODE=published` is explicitly configured.
+
+## Screenplay report interface and benchmarking
+
+The uploader renders a responsive analysis loader while the existing blocking `/api/analyze`
+request is active, then maps the validated result into a presentation-only `ScreenplayReport`.
+The loader percentage is explicitly labeled as an estimate because the backend does not currently
+expose category-level job progress or cancellation. It does not poll, invent completed stages, or
+make additional AI calls. Mock results are held for a minimum of ten seconds from authorization so
+the loader can be reviewed locally and in staging; production evaluations are never delayed.
+
+Every displayed screenplay score remains on the 0–10 report scale. The report adapter maps API
+format values such as `halfHourPilot` to `Half-Hour TV Pilot` and genre values such as `comedy` to
+`Comedy`; an observed peer cohort is accepted only when both displayed values match exactly.
+
+Production currently has no peer-aggregate API. Until observed Format/Genre aggregates are
+available, the report uses the [published methodology prior](https://www.loglisted.com/methodology):
+1,000 modeled submissions, mean 6.3, median 6.2, standard deviation 1.0, the published seven score
+bands, and published category means. Category percentiles are deterministically estimated from
+those category means using the illustrative 1.0 standard deviation. The interface calls this the
+“Loglisted model,” while the benchmark note retains the explicit illustrative disclosure; the
+modeled 1,000 is not presented as an observed Loglisted sample or an exact Format/Genre cohort.
+Full observed benchmarking requires these additional backend fields:
+
+- exact cohort label and sample size;
+- overall percentile, mean, median, standard deviation, and distribution bins;
+- optional top-decile threshold;
+- category percentile and peer mean for each of the ten categories.
+
+The “Download PDF Report” action uses the browser’s print dialog and a dedicated print stylesheet,
+so no screenplay data is uploaded to a report service. “Copy share summary” creates a deterministic
+title, score, and qualified cohort sentence without screenplay text or private submission data.

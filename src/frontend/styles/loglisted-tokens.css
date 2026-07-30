@@ -13,6 +13,8 @@
 
   --loglisted-font-family: "Cutive", Georgia, "Times New Roman", serif;
   --loglisted-heading-font-family: "Cutive", Georgia, "Times New Roman", serif;
+  --loglisted-ui-font-family:
+    Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --loglisted-font-size-xs: 0.75rem;
   --loglisted-font-size-sm: 0.875rem;
   --loglisted-font-size-md: 1rem;

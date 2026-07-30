@@ -29,6 +29,7 @@ export async function getResult(
     if (result?.anonymousSessionId !== session.anonymousSessionId) {
       throw new AuthorizationError("Result is unavailable.");
     }
+    const pageCount = result.internal.approvedMetadata["pageCount"];
     return Response.json(
       {
         projectTitle: result.projectTitle,
@@ -37,6 +38,9 @@ export async function getResult(
         categoryScores: result.categoryScores,
         overallScore: result.overallScore,
         completedAt: result.completedAt,
+        ...(typeof pageCount === "number" && Number.isInteger(pageCount) && pageCount > 0
+          ? { pageCount }
+          : {}),
         ...(result.internal.evaluationMode
           ? { evaluationMode: result.internal.evaluationMode }
           : {}),

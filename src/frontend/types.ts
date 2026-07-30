@@ -62,6 +62,7 @@ export interface AnalysisResult {
   declaredGenre?: string;
   categoryScores: CategoryScores;
   overallScore: number;
+  pageCount?: number;
   completedAt?: string;
   evaluationMode?: "mock";
 }
@@ -134,6 +135,14 @@ export function parseAnalysisResult(input: unknown): AnalysisResult {
     const value = optionalString(record, key);
     if (value !== undefined) result[key] = value;
   }
+  const pageCount = record["pageCount"];
+  if (
+    pageCount !== undefined &&
+    (typeof pageCount !== "number" || !Number.isInteger(pageCount) || pageCount < 1)
+  ) {
+    throw new Error("Invalid analysis result field: pageCount");
+  }
+  if (typeof pageCount === "number") result.pageCount = pageCount;
   if (evaluationMode === "mock") result.evaluationMode = evaluationMode;
   return result;
 }

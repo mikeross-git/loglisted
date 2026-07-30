@@ -57,7 +57,7 @@ addPropertyControls(FramerScreenplayUploader, {
   maxWidth: {
     type: ControlType.Number,
     title: "Max Width",
-    defaultValue: 768,
+    defaultValue: 1180,
     min: 320,
     max: 1200,
     step: 8,
