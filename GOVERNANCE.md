@@ -94,6 +94,10 @@ Methodology changes include:
 
 Methodology changes should begin with an issue or proposal before implementation.
 
+Merging a methodology change into this repository does not automatically change the production application. Approved methodology releases are implemented in the application through a separate review and testing process.
+
+The published methodology is authoritative at the specification level. The production application should identify which methodology version it implements.
+
 ### Major Changes
 
 Major changes include:
