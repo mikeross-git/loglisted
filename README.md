@@ -15,3 +15,7 @@ Your script is ranked in its category and visible to industry insiders.
 **Step 4 - Get Introduced**
 
 Managers and producers request a free intro if they want to read more.
+
+## License
+
+Code in this repository is licensed under the Apache License 2.0.
