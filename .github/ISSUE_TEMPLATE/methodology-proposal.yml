@@ -2,126 +2,118 @@ name: Methodology proposal
 description: Propose a change to the scoring framework
 title: "[Methodology]: "
 labels:
+  - methodology
+  - proposal
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to propose a change to the scoring methodology.
 
-* methodology
+        Strong proposals explain the current problem, the proposed change, supporting evidence, likely tradeoffs, and how the change should be evaluated.
 
-* proposal
-  body:
+  - type: input
+    id: dimension
+    attributes:
+      label: Scoring dimension
+      description: Which scoring dimension, rule, weight, or output does this proposal affect?
+      placeholder: Dialogue, pacing, structure, characterization, or another area
+    validations:
+      required: true
 
-* type: markdown
-  attributes:
-  value: |
-  Use this form to propose a change to the scoring methodology.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this address?
+      description: Describe the weakness, ambiguity, inconsistency, or gap in the current methodology.
+      placeholder: Explain what is not working and who it affects.
+    validations:
+      required: true
 
-  ```
-  Strong proposals explain the current problem, the proposed change, supporting evidence, likely tradeoffs, and how the change should be evaluated.
-  ```
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: Current behavior
+      description: Explain how the methodology currently handles this situation.
+      placeholder: Include the current rule, definition, threshold, or outcome.
+    validations:
+      required: true
 
-* type: input
-  id: dimension
-  attributes:
-  label: Scoring dimension
-  description: Which scoring dimension, rule, weight, or output does this proposal affect?
-  placeholder: "Example: dialogue, pacing, structure, characterization"
-  validations:
-  required: true
+  - type: textarea
+    id: proposed_change
+    attributes:
+      label: Proposed change
+      description: Describe the exact change you recommend.
+      placeholder: Be specific about definitions, formulas, weights, thresholds, or interpretation.
+    validations:
+      required: true
 
-* type: textarea
-  id: problem
-  attributes:
-  label: What problem does this address?
-  description: Describe the weakness, ambiguity, inconsistency, or gap in the current methodology.
-  placeholder: Explain what is not working and who it affects.
-  validations:
-  required: true
+  - type: textarea
+    id: reasoning
+    attributes:
+      label: Reasoning
+      description: Explain why the proposed approach would be better.
+      placeholder: Describe the expected benefit to writers, reviewers, researchers, or implementers.
+    validations:
+      required: true
 
-* type: textarea
-  id: current
-  attributes:
-  label: Current behavior
-  description: Explain how the methodology currently handles this situation.
-  placeholder: Include the current rule, definition, threshold, or outcome.
-  validations:
-  required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and examples
+      description: Include research, test cases, industry references, or shareable examples.
+      placeholder: Link sources where possible and distinguish evidence from opinion.
+    validations:
+      required: true
 
-* type: textarea
-  id: proposal
-  attributes:
-  label: Proposed change
-  description: Describe the exact change you recommend.
-  placeholder: Be specific about definitions, formulas, weights, thresholds, or interpretation.
-  validations:
-  required: true
+  - type: textarea
+    id: scoring_impact
+    attributes:
+      label: Expected scoring impact
+      description: Explain how existing scores or outputs could change.
+      placeholder: Describe which scores may increase or decrease and whether prior results remain comparable.
+    validations:
+      required: true
 
-* type: textarea
-  id: rationale
-  attributes:
-  label: Reasoning
-  description: Explain why the proposed approach would be better.
-  placeholder: Describe the expected benefit to writers, reviewers, researchers, or implementers.
-  validations:
-  required: true
+  - type: textarea
+    id: drawbacks
+    attributes:
+      label: Drawbacks and tradeoffs
+      description: Explain where this proposal may fail or produce unintended effects.
+      placeholder: Include genre, format, cultural, accessibility, or bias concerns.
+    validations:
+      required: true
 
-* type: textarea
-  id: evidence
-  attributes:
-  label: Evidence and examples
-  description: Include research, test cases, industry references, or shareable examples.
-  placeholder: Link sources where possible and distinguish evidence from opinion.
-  validations:
-  required: true
+  - type: textarea
+    id: evaluation
+    attributes:
+      label: How should this be evaluated?
+      description: Suggest tests, benchmarks, or evaluation examples.
+      placeholder: Describe what evidence would show that the proposal improves the methodology.
+    validations:
+      required: true
 
-* type: textarea
-  id: impact
-  attributes:
-  label: Expected scoring impact
-  description: Explain how existing scores or outputs could change.
-  placeholder: |
-  Which scores may increase?
-  Which scores may decrease?
-  Would prior results remain comparable?
-  validations:
-  required: true
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility
+      options:
+        - No expected compatibility impact
+        - Backward-compatible scoring change
+        - Existing scores may change
+        - Breaking methodology change
+        - Unsure
+    validations:
+      required: true
 
-* type: textarea
-  id: drawbacks
-  attributes:
-  label: Drawbacks and tradeoffs
-  description: Explain where this proposal may fail or produce unintended effects.
-  placeholder: Include genre, format, cultural, accessibility, or bias concerns.
-  validations:
-  required: true
-
-* type: textarea
-  id: evaluation
-  attributes:
-  label: How should this be evaluated?
-  description: Suggest tests, benchmarks, or evaluation examples.
-  placeholder: Describe what evidence would show that the proposal improves the methodology.
-  validations:
-  required: true
-
-* type: dropdown
-  id: compatibility
-  attributes:
-  label: Compatibility
-  options:
-  - No expected compatibility impact
-  - Backward-compatible scoring change
-  - Existing scores may change
-  - Breaking methodology change
-  - Unsure
-  validations:
-  required: true
-
-* type: checkboxes
-  id: checks
-  attributes:
-  label: Submission checks
-  options:
-  - label: I searched existing issues and proposals.
-  required: true
-  - label: I have described possible drawbacks, not only benefits.
-  required: true
-  - label: I have permission to share all included examples and materials.
-  required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched existing issues and proposals.
+          required: true
+        - label: I described possible drawbacks, not only benefits.
+          required: true
+        - label: I have permission to share all included examples and materials.
+          required: true
