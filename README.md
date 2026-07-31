@@ -18,4 +18,4 @@ Managers and producers request a free intro if they want to read more.
 
 ## License
 
-Code in this repository is licensed under the Apache License 2.0.
+Code in this repository is licensed under the Apache 2.0 License.
