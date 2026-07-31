@@ -1,0 +1,119 @@
+name: Scoring inconsistency
+description: Report a score that appears inconsistent with the documented methodology
+title: "[Scoring]: "
+labels:
+
+* scoring
+
+* needs-review
+  body:
+
+* type: markdown
+  attributes:
+  value: |
+  Use this form when a score appears inconsistent with the documented methodology.
+
+  ```
+  This form is for unexpected or contradictory scoring behavior. Use the methodology proposal form when you want to change the rule itself.
+  ```
+
+* type: input
+  id: version
+  attributes:
+  label: Methodology version
+  description: Which methodology version, release, or commit produced the result?
+  placeholder: "Example: v0.2.0 or commit abc123"
+  validations:
+  required: true
+
+* type: input
+  id: dimension
+  attributes:
+  label: Scoring dimension
+  placeholder: "Example: dialogue, pacing, structure"
+  validations:
+  required: true
+
+* type: textarea
+  id: context
+  attributes:
+  label: Relevant context
+  description: Describe the script type, format, genre, or other context needed to understand the result.
+  placeholder: "Example: 12-page short film, nonlinear drama"
+  validations:
+  required: true
+
+* type: textarea
+  id: example
+  attributes:
+  label: Minimal shareable example
+  description: Use synthetic, public-domain, or otherwise permitted material.
+  placeholder: Include only the smallest example needed to demonstrate the issue.
+  render: text
+  validations:
+  required: true
+
+* type: input
+  id: actual
+  attributes:
+  label: Actual score
+  placeholder: "Example: 42 out of 100"
+  validations:
+  required: true
+
+* type: input
+  id: expected
+  attributes:
+  label: Expected score or range
+  placeholder: "Example: approximately 65–75"
+  validations:
+  required: true
+
+* type: textarea
+  id: reasoning
+  attributes:
+  label: Why does this appear inconsistent?
+  description: Reference the documented rule, definition, or comparable example.
+  placeholder: Explain the mismatch between the methodology and the result.
+  validations:
+  required: true
+
+* type: textarea
+  id: comparison
+  attributes:
+  label: Comparable examples
+  description: Include similar cases that received materially different results, when available.
+  placeholder: Describe or link comparable evaluation cases.
+
+* type: dropdown
+  id: scope
+  attributes:
+  label: How broadly might this apply?
+  options:
+  - One isolated example
+  - A particular genre or format
+  - A particular scoring dimension
+  - Many or all scripts
+  - Unsure
+  validations:
+  required: true
+
+* type: textarea
+  id: possible_cause
+  attributes:
+  label: Possible cause
+  description: Optional. Share any suspected rule, implementation detail, or edge case.
+
+* type: checkboxes
+  id: checks
+  attributes:
+  label: Submission checks
+  options:
+  - label: I checked the current methodology documentation.
+  required: true
+  - label: I searched existing issues for similar reports.
+  required: true
+  - label: I removed private and identifying information.
+  required: true
+  - label: I have permission to share the included material.
+  required: true
