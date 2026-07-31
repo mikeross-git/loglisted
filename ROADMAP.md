@@ -38,9 +38,9 @@ This roadmap covers the open scoring methodology, evaluation framework, and refe
 
 ### Multi-system evaluation
 
-- Define a protocol for comparing multiple analysis models
-- Measure inter-model agreement and disagreement
-- Develop transparent consensus-scoring methods
+- Define a protocol for using multiple analysis models (LLMs)
+- Measure inter-model (LLM) agreement and disagreement
+- Develop transparent consensus-scoring methods for top scripts
 - Publish model-independent evaluation reports
 
 ### Additional formats
