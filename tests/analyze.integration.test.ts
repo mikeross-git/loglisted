@@ -297,7 +297,7 @@ describe("complete screenplay analysis endpoint", () => {
           duplicate.dependencies,
         )
       ).status,
-    ).toBe(422);
+    ).toBe(409);
 
     const malformed = await setup();
     const malformedPdf = new TextEncoder().encode("%PDF-1.7\nnot a valid document");
@@ -320,6 +320,7 @@ describe("complete screenplay analysis endpoint", () => {
       ).status,
     ).toBe(422);
   });
+
 
   it("reuses a completed cached artifact without another LLM call or leaking ownership", async () => {
     const setupValue = await setup();

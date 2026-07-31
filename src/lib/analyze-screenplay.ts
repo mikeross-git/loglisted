@@ -9,6 +9,7 @@ import type { LlmProvider } from "./llm/provider.js";
 import type { ModelPricingConfig } from "./model-pricing.js";
 import { parseScreenplay } from "./parser.js";
 import { assertScreenplayContent } from "./screenplay-content-validation.js";
+import { DuplicateSubmissionError, ProcessingCapacityError } from "./errors.js";
 import { extractPdf, type PdfExtractionOptions } from "./pdf.js";
 import { ReducedScreenplaySchema, reduceScreenplaySummaries } from "./reducer.js";
 import type { ResultTokenManager } from "./result-token.js";
@@ -268,8 +269,12 @@ export async function analyzeScreenplay(
     };
     await dependencies.results.put(result, dependencies.resultTtlSeconds ?? 30 * 86_400);
     reused = true;
+  } else if (lockResult.outcome === "processing") {
+    throw new DuplicateSubmissionError("Equivalent screenplay processing is already active.");
   } else {
-    throw new Error("Equivalent screenplay processing is already active or failed.");
+    throw new ProcessingCapacityError(
+      `Equivalent screenplay processing previously failed: ${lockResult.failureCode}`,
+    );
   }
   const access = dependencies.resultTokens.issue(result.resultId, claims.anonymousSessionId);
   const deletionToken = dependencies.deletionTokens.issue(

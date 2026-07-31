@@ -42,6 +42,7 @@ export type AnalyzeStage =
   | "rate_limit"
   | "concurrency"
   | "global_capacity"
+  | "processing_lock"
   | AnalyzePipelineStage;
 
 export interface AnalyzeRejectionDiagnostic {
@@ -112,6 +113,7 @@ export async function postAnalyze(
     );
     stage = "global_capacity";
     await dependencies.admitGlobalCapacity?.();
+    stage = "processing_lock";
     const analyzed = await analyzeScreenplay(uploadedBuffer, claims, {
       ...dependencies,
       onProcessingStage: (pipelineStage) => {
