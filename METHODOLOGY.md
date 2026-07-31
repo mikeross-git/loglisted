@@ -310,13 +310,6 @@ It considers whether events build meaningfully and whether the central dramatic 
 | `Resolution` | `20%` |
 | **Total** | **100%** |
 
-Story	
-   Conflict	0.25
-   Escalation	0.25
-   	0.15
-   	0.15
-  	0.2
-
 ## 4.3 Structure
 
 Structure evaluates how effectively the screenplay organizes dramatic events, sequences, turning points, and progression.
