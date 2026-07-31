@@ -147,15 +147,24 @@ export async function postAnalyze(
       { headers: withSecurityHeaders(corsHeaders(origin, dependencies.originPolicy)) },
     );
   } catch (error) {
-    const status = error instanceof AppError ? error.statusCode : 422;
+    const reasonCode =
+      error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
+        ? error.details["reasonCode"]
+        : undefined;
+    const status =
+      reasonCode === "pdf_file_size_limit" ||
+      reasonCode === "pdf_page_minimum" ||
+      reasonCode === "pdf_page_limit"
+        ? 413
+        : error instanceof AppError
+          ? error.statusCode
+          : 422;
     try {
       dependencies.onRejection?.({
         stage,
         errorClass: error instanceof Error ? error.name : "UnknownError",
         errorCode: error instanceof AppError ? error.code : "UNEXPECTED_ANALYSIS_ERROR",
-        ...(error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
-          ? { reasonCode: error.details["reasonCode"] }
-          : {}),
+        ...(reasonCode ? { reasonCode } : {}),
         status,
       });
     } catch {
