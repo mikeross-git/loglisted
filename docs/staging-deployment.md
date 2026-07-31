@@ -203,7 +203,8 @@ setup. Localhost keeps its existing cookie and development behavior.
 - [ ] `ALLOWED_ORIGINS` includes the exact published Framer origin and no wildcard.
 - [ ] An unlisted origin receives no CORS access.
 - [ ] The Framer Turnstile site key and backend staging secret belong to the same staging widget.
-- [ ] A text-based PDF under 15 MiB and 150 pages produces ten scores plus an overall score.
+- [ ] A text-based PDF between 25 and 150 pages and no larger than 15 MiB produces ten scores plus
+      an overall score.
 - [ ] The response is visibly identified as mock in development/staging UI behavior.
 - [ ] A duplicate request reuses or rejects work without duplicate provider work.
 - [ ] No screenplay text, PDF bytes, tokens, cookies, prompts, or results appear in logs.

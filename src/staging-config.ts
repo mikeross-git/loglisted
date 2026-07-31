@@ -69,6 +69,7 @@ export const StagingEnvironmentSchema = z
       .max(15 * 1024 * 1024)
       .default(15 * 1024 * 1024),
     MAX_PDF_PAGES: z.coerce.number().int().positive().max(150).default(150),
+    MIN_PDF_PAGES: z.coerce.number().int().positive().max(150).default(25),
     MIN_READABLE_TEXT_LENGTH: z.coerce.number().int().nonnegative().default(1000),
     PDF_LOW_TEXT_PAGE_THRESHOLD: z.coerce.number().int().nonnegative().default(40),
     MAX_COMPLETED_PER_SESSION: z.coerce.number().int().positive().default(10),
@@ -87,6 +88,13 @@ export const StagingEnvironmentSchema = z
   })
   .passthrough()
   .superRefine((config, context) => {
+    if (config.MIN_PDF_PAGES > config.MAX_PDF_PAGES) {
+      context.addIssue({
+        code: "custom",
+        path: ["MIN_PDF_PAGES"],
+        message: "MIN_PDF_PAGES cannot exceed MAX_PDF_PAGES.",
+      });
+    }
     if (config.TURNSTILE_MODE === "test") {
       if (config.TURNSTILE_SITE_KEY !== TURNSTILE_ALWAYS_PASS_TEST_SITE_KEY) {
         context.addIssue({

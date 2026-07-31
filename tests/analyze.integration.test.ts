@@ -116,6 +116,7 @@ async function setup(options: { providerMalformed?: boolean; budget?: number } =
       }),
     summaryModel: "test-summary",
     scoringModel: "test-score",
+    pdfExtractionOptions: { minPages: 1 },
   };
   return { pdf, created, issued, dependencies, provider, results };
 }

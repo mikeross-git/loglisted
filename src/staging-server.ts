@@ -253,6 +253,7 @@ export function createStagingApp(
     pdfExtractionOptions: {
       maxFileBytes: config.MAX_PDF_BYTES,
       maxPages: config.MAX_PDF_PAGES,
+      minPages: config.MIN_PDF_PAGES,
       minimumReadableTextLength: config.MIN_READABLE_TEXT_LENGTH,
       lowTextPageThreshold: config.PDF_LOW_TEXT_PAGE_THRESHOLD,
     },

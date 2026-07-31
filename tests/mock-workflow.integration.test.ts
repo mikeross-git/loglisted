@@ -212,6 +212,7 @@ describe("full mock upload-to-result workflow", () => {
           }),
         summaryModel: "mock-summary",
         scoringModel: "mock-score",
+        pdfExtractionOptions: { minPages: 1 },
       },
     );
     expect(analysisResponse.status).toBe(200);

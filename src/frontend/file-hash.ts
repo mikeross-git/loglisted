@@ -3,11 +3,12 @@ import type { FileInspection } from "./types.js";
 export interface FileCheckOptions {
   maximumBytes: number;
   maximumPages: number;
+  minimumPages: number;
 }
 
 export class ClientFileError extends Error {
   constructor(
-    readonly code: "invalid_pdf" | "empty" | "too_large" | "too_many_pages",
+    readonly code: "invalid_pdf" | "empty" | "too_large" | "too_few_pages" | "too_many_pages",
     message: string,
   ) {
     super(message);
@@ -72,6 +73,12 @@ export async function inspectAndHashPdf(
     throw new ClientFileError("invalid_pdf", "The file does not have a PDF signature.");
   }
   const details = approximatePdfDetails(bytes);
+  if (
+    details.approximatePageCount !== null &&
+    details.approximatePageCount < options.minimumPages
+  ) {
+    throw new ClientFileError("too_few_pages", "The PDF is below the minimum page count.");
+  }
   if (
     details.approximatePageCount !== null &&
     details.approximatePageCount > options.maximumPages

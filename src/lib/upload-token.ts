@@ -19,7 +19,7 @@ export const UploadTokenClaimsSchema = z
     imdbUrl: ImdbProfileUrlSchema.optional(),
     projectTitle: z.string().min(1).max(200),
     logline: z.string().max(1000).optional(),
-    declaredFormat: z.enum(["feature", "halfHourPilot", "hourPilot", "short", "unknown"]),
+    declaredFormat: z.enum(["feature", "halfHourPilot", "hourPilot", "unknown"]),
     primaryGenre: z.string().min(1).max(100),
     confirmationsAccepted: z.literal(true),
     aiProcessingPolicyVersion: z.string().min(1),
@@ -58,7 +58,7 @@ export class UploadTokenManager {
       Partial<Pick<UploadTokenClaims, "aiProcessingPolicyVersion" | "privacyNoticeVersion">>,
   ): { token: string; claims: UploadTokenClaims } {
     const issuedAt = Math.floor(this.now().getTime() / 1_000);
-    const complete: UploadTokenClaims = {
+    const complete = UploadTokenClaimsSchema.parse({
       version: 1,
       aiProcessingPolicyVersion: claims.aiProcessingPolicyVersion ?? "ai-processing-policy-1",
       privacyNoticeVersion: claims.privacyNoticeVersion ?? "privacy-notice-1",
@@ -68,7 +68,7 @@ export class UploadTokenManager {
       issuedAt,
       expiresAt: issuedAt + this.lifetimeSeconds,
       nonce: randomUUID(),
-    };
+    });
     const payload = Buffer.from(JSON.stringify(complete)).toString("base64url");
     const signature = createHmac("sha256", this.signingSecret).update(payload).digest("base64url");
     return { token: `${payload}.${signature}`, claims: complete };

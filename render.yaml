@@ -48,6 +48,12 @@ services:
         generateValue: true
       - key: STORAGE_DRIVER
         value: memory
+      - key: MAX_PDF_BYTES
+        value: "15728640"
+      - key: MIN_PDF_PAGES
+        value: "25"
+      - key: MAX_PDF_PAGES
+        value: "150"
       - key: RAW_PDF_PERSISTENCE_ENABLED
         value: "false"
       - key: RAW_TEXT_PERSISTENCE_ENABLED

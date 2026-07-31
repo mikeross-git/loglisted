@@ -47,6 +47,7 @@ export interface FramerScreenplayUploaderProps {
   apiBaseUrl: string;
   turnstileSiteKey: string;
   maximumFileSizeMb?: number;
+  minimumPages?: number;
   maximumPages?: number;
   privacyPolicyUrl?: string;
   acceptableUseUrl?: string;
@@ -116,6 +117,7 @@ export default function FramerScreenplayUploader({
   apiBaseUrl,
   turnstileSiteKey,
   maximumFileSizeMb = 15,
+  minimumPages = 25,
   maximumPages = 150,
   privacyPolicyUrl = "/privacy",
   acceptableUseUrl = "/acceptable-use",
@@ -135,6 +137,7 @@ export default function FramerScreenplayUploader({
   const fileSelectedAt = useRef<string | null>(null);
   const turnstileContainer = useRef<HTMLDivElement | null>(null);
   const turnstileWidget = useRef<string | null>(null);
+  const uploaderContainer = useRef<HTMLDivElement | null>(null);
   const reportContainer = useRef<HTMLDivElement | null>(null);
   const [session, setSession] = useState<BrowserSession | null>(null);
   const [project, setProject] = useState<ProjectForm>(initialProject);
@@ -144,6 +147,7 @@ export default function FramerScreenplayUploader({
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [phase, setPhase] = useState<UploaderPhase>("establishing_session");
   const [error, setError] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [analysisStartedAt, setAnalysisStartedAt] = useState<number | null>(null);
   const [analysisProgressComplete, setAnalysisProgressComplete] = useState(false);
@@ -154,6 +158,13 @@ export default function FramerScreenplayUploader({
     () => (result ? adaptAnalysisResult(result, { project, inspection }) : null),
     [inspection, project, result],
   );
+
+  useEffect(() => {
+    if (!isAnalyzing || !uploaderContainer.current) return;
+    window.requestAnimationFrame(() => {
+      uploaderContainer.current?.scrollIntoView({ block: "start", behavior: "auto" });
+    });
+  }, [isAnalyzing]);
 
   useEffect(() => {
     if (!report || !reportContainer.current) return;
@@ -223,8 +234,20 @@ export default function FramerScreenplayUploader({
   const resetTurnstile = useCallback(() => {
     setTurnstileToken(null);
     if (turnstileMode === "mock") return;
-    if (turnstileWidget.current && window.turnstile) {
+    if (!turnstileWidget.current || !window.turnstile) return;
+
+    // The form is hidden while analysis runs, so Framer may detach the
+    // Turnstile container before authorization finishes. Resetting a widget
+    // whose container is no longer connected causes TurnstileError 300030.
+    if (!turnstileContainer.current?.isConnected) {
+      turnstileWidget.current = null;
+      return;
+    }
+
+    try {
       window.turnstile.reset(turnstileWidget.current);
+    } catch {
+      turnstileWidget.current = null;
     }
   }, [turnstileMode]);
 
@@ -238,6 +261,7 @@ export default function FramerScreenplayUploader({
     setHashProgress(0);
     setResult(null);
     setError(null);
+    setFileError(null);
     if (!selected) return;
     fileSelectedAt.current = new Date().toISOString();
     setPhase("hashing");
@@ -246,6 +270,7 @@ export default function FramerScreenplayUploader({
         selected,
         {
           maximumBytes: maximumFileSizeMb * 1024 * 1024,
+          minimumPages,
           maximumPages,
         },
         setHashProgress,
@@ -255,11 +280,13 @@ export default function FramerScreenplayUploader({
     } catch (caught) {
       setFile(null);
       setPhase("error");
-      setError(
-        caught instanceof ClientFileError &&
-          (caught.code === "too_large" || caught.code === "too_many_pages")
-          ? publicErrorMessages.documentLimit
-          : publicErrorMessages.unreadable,
+      setFileError(
+        caught instanceof ClientFileError && caught.code === "too_few_pages"
+          ? `This PDF must contain between ${minimumPages} and ${maximumPages} pages.`
+          : caught instanceof ClientFileError &&
+              (caught.code === "too_large" || caught.code === "too_many_pages")
+            ? publicErrorMessages.documentLimit
+            : publicErrorMessages.unreadable,
       );
     }
   };
@@ -300,6 +327,7 @@ export default function FramerScreenplayUploader({
       return;
     }
     setError(null);
+    setFileError(null);
     setResult(null);
     const analysisStartedAt = Date.now();
     setAnalysisStartedAt(analysisStartedAt);
@@ -337,16 +365,23 @@ export default function FramerScreenplayUploader({
       }
       if (completedResult.evaluationMode === "mock") {
         await waitForMinimumMockAnalysisDuration(analysisStartedAt);
-        setAnalysisProgressComplete(true);
-        await holdCompletedMockAnalysis();
       }
+      setAnalysisProgressComplete(true);
+      await holdCompletedMockAnalysis();
       setResult(completedResult);
       setPhase("completed");
     } catch (caught) {
       resetTurnstile();
-      setError(
-        caught instanceof ApiClientError ? caught.publicMessage : publicErrorMessages.analysis,
-      );
+      const publicMessage =
+        caught instanceof ApiClientError ? caught.publicMessage : publicErrorMessages.analysis;
+      if (
+        publicMessage === publicErrorMessages.unreadable ||
+        publicMessage === publicErrorMessages.documentLimit
+      ) {
+        setFileError(publicMessage);
+      } else {
+        setError(publicMessage);
+      }
       setPhase("error");
     }
   };
@@ -363,6 +398,7 @@ export default function FramerScreenplayUploader({
 
   return (
     <div
+      ref={uploaderContainer}
       className={`loglisted-uploader${compactMode ? " loglisted-uploader--compact" : ""}`}
       style={uploaderStyle}
     >
@@ -372,12 +408,16 @@ export default function FramerScreenplayUploader({
             <p className="loglisted-uploader__eyebrow">Loglisted Screenplay Scoring</p>
             <h2 className="loglisted-uploader__title">Score your screenplay</h2>
             <p className="loglisted-uploader__description">
-              No account is required. To prevent abuse, submission limits apply.
+              Submit your best screenplay. You&apos;ll only get one shot, so please make sure your
+              document has been reviewed, edited, and is ready for the bright lights.
             </p>
             <p className="loglisted-uploader__privacy-notice">
               Your uploaded PDF is processed temporarily and is not retained after analysis. Scores
               and limited project metadata may be stored according to the{" "}
-              <a href={privacyPolicyUrl}>Privacy Policy</a>.
+              <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>
+              .
             </p>
           </header>
 
@@ -510,7 +550,6 @@ export default function FramerScreenplayUploader({
                     <option value="feature">Feature</option>
                     <option value="halfHourPilot">Half-Hour TV Pilot</option>
                     <option value="hourPilot">Hour TV Pilot</option>
-                    <option value="short">Short</option>
                   </select>
                 </div>
                 <div className="loglisted-uploader__field">
@@ -580,14 +619,19 @@ export default function FramerScreenplayUploader({
               </h3>
               <div className="loglisted-uploader__upload-zone">
                 <label className="loglisted-uploader__label" htmlFor="loglisted-screenplay-file">
-                  Choose a text-based PDF
+                  Upload your script as a PDF ({maximumFileSizeMb}MB max, {minimumPages}–
+                  {maximumPages} pages)
                 </label>
                 <input
                   id="loglisted-screenplay-file"
                   className="loglisted-uploader__file-input"
                   type="file"
                   accept="application/pdf,.pdf"
-                  aria-describedby="loglisted-file-status"
+                  aria-describedby={
+                    fileError
+                      ? "loglisted-file-status loglisted-file-error"
+                      : "loglisted-file-status"
+                  }
                   onChange={(event) => void onFileSelected(event.target.files?.[0] ?? null)}
                 />
                 {phase === "hashing" && (
@@ -611,6 +655,15 @@ export default function FramerScreenplayUploader({
                     </p>
                   )}
                 </div>
+                {fileError && (
+                  <p
+                    className="loglisted-uploader__error-message loglisted-uploader__file-error"
+                    id="loglisted-file-error"
+                    role="alert"
+                  >
+                    {fileError}
+                  </p>
+                )}
               </div>
             </section>
 
@@ -626,7 +679,7 @@ export default function FramerScreenplayUploader({
                   id="loglisted-original-work"
                   checked={project.originalWorkConfirmed}
                   onChange={(checked) => updateProject("originalWorkConfirmed", checked)}
-                  label="I confirm this is original work or I am authorized to submit it."
+                  label="I confirm this is original work, and I am authorized to submit it."
                 />
                 <Confirmation
                   id="loglisted-upload-rights"
@@ -640,7 +693,11 @@ export default function FramerScreenplayUploader({
                   onChange={(checked) => updateProject("privacyTermsAccepted", checked)}
                   label={
                     <>
-                      I accept the <a href={privacyPolicyUrl}>Privacy Policy</a>.
+                      I accept the{" "}
+                      <a href={privacyPolicyUrl} target="_blank" rel="noopener noreferrer">
+                        Privacy Policy
+                      </a>
+                      .
                     </>
                   }
                 />
@@ -650,7 +707,11 @@ export default function FramerScreenplayUploader({
                   onChange={(checked) => updateProject("acceptableUseAccepted", checked)}
                   label={
                     <>
-                      I accept the <a href={acceptableUseUrl}>Acceptable Use Policy</a>.
+                      I accept the{" "}
+                      <a href={acceptableUseUrl} target="_blank" rel="noopener noreferrer">
+                        Acceptable Use Policy
+                      </a>
+                      .
                     </>
                   }
                 />
@@ -658,7 +719,7 @@ export default function FramerScreenplayUploader({
                   id="loglisted-ai-processing"
                   checked={project.aiProcessingAcknowledged}
                   onChange={(checked) => updateProject("aiProcessingAcknowledged", checked)}
-                  label="I understand that portions of my screenplay may be processed by third-party AI service providers to generate scores. Loglisted is configured not to opt submitted content into model training, subject to the provider's current terms and technical controls."
+                  label="I understand that portions of my screenplay may be processed by third-party AI service providers to generate scores. Loglisted is configured not to opt submitted content into model training, but is subject to the provider's current terms and technical controls and provides no warranty against such training."
                 />
               </div>
             </section>

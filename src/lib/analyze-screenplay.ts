@@ -8,6 +8,7 @@ import { RepresentativeExcerptSchema, sampleRepresentativeExcerpts } from "./exc
 import type { LlmProvider } from "./llm/provider.js";
 import type { ModelPricingConfig } from "./model-pricing.js";
 import { parseScreenplay } from "./parser.js";
+import { assertScreenplayContent } from "./screenplay-content-validation.js";
 import { extractPdf, type PdfExtractionOptions } from "./pdf.js";
 import { ReducedScreenplaySchema, reduceScreenplaySummaries } from "./reducer.js";
 import type { ResultTokenManager } from "./result-token.js";
@@ -124,12 +125,15 @@ export async function analyzeScreenplay(
             titlePageContactDetected: redacted.titlePageContactDetected,
           },
         };
+        assertScreenplayContent(screenplay);
         await dependencies.cache.set(
           "screenplay_metadata",
           context,
           ParsedScreenplaySchema,
           screenplay,
         );
+      } else {
+        assertScreenplayContent(screenplay);
       }
       const ChunksSchema = z.array(ScreenplayChunkSchema);
       dependencies.onProcessingStage?.("chunk_cache");

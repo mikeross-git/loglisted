@@ -22,6 +22,7 @@ describe("configuration", () => {
     const config = loadConfig(validEnvironment);
     expect(config.MAX_PDF_BYTES).toBe(15 * 1024 * 1024);
     expect(config.MAX_PDF_PAGES).toBe(150);
+    expect(config.MIN_PDF_PAGES).toBe(25);
     expect(config.CORS_ALLOWED_ORIGINS).toHaveLength(2);
   });
 

@@ -152,6 +152,7 @@ export const ConfigSchema = z
       .positive()
       .default(15 * 1024 * 1024),
     MAX_PDF_PAGES: z.coerce.number().int().positive().default(150),
+    MIN_PDF_PAGES: z.coerce.number().int().positive().max(150).default(25),
     MIN_READABLE_TEXT_LENGTH: z.coerce.number().int().nonnegative().default(1000),
     PDF_LOW_TEXT_PAGE_THRESHOLD: z.coerce.number().int().nonnegative().default(40),
     CHUNK_TARGET_TOKENS: z.coerce.number().int().min(1500).max(2500).default(2000),
@@ -164,6 +165,13 @@ export const ConfigSchema = z
   })
   .strict()
   .superRefine((config, context) => {
+    if (config.MIN_PDF_PAGES > config.MAX_PDF_PAGES) {
+      context.addIssue({
+        code: "custom",
+        path: ["MIN_PDF_PAGES"],
+        message: "MIN_PDF_PAGES cannot exceed MAX_PDF_PAGES.",
+      });
+    }
     if (config.APP_ENV === "staging") {
       context.addIssue({
         code: "custom",

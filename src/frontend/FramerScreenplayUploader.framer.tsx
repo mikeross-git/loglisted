@@ -14,6 +14,15 @@ addPropertyControls(FramerScreenplayUploader, {
     defaultValue: "",
   },
 
+  minimumPages: {
+    type: ControlType.Number,
+    title: "Min Pages",
+    defaultValue: 25,
+    min: 25,
+    max: 150,
+    step: 1,
+  },
+
   accentColor: {
     type: ControlType.Color,
     title: "Accent",

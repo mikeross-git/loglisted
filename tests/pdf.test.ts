@@ -9,6 +9,7 @@ import { ParsingFailureError, UnsupportedFileError } from "../src/lib/errors.js"
 import { extractPdf } from "../src/lib/pdf.js";
 
 const permissiveLimits = {
+  minPages: 1,
   minimumReadableTextLength: 10,
   lowTextPageThreshold: 3,
 };
@@ -73,10 +74,22 @@ describe("local PDF validation and extraction", () => {
     const pdf = await createTextPdf(["Hi"]);
     await expect(
       extractPdf(pdf, "short.pdf", "application/pdf", {
+        minPages: 1,
         minimumReadableTextLength: 100,
         lowTextPageThreshold: 1,
       }),
     ).rejects.toBeInstanceOf(UnsupportedFileError);
+  });
+
+  it("rejects PDFs below the configured minimum page count", async () => {
+    const pdf = await createTextPdf(["A readable one-page screenplay fixture."]);
+    await expect(
+      extractPdf(pdf, "too-short.pdf", "application/pdf", {
+        minPages: 25,
+        minimumReadableTextLength: 10,
+        lowTextPageThreshold: 3,
+      }),
+    ).rejects.toMatchObject({ details: { reasonCode: "pdf_page_minimum" } });
   });
 
   it("warns when filename and MIME declarations disagree with actual PDF bytes", async () => {

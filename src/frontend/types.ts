@@ -1,4 +1,4 @@
-export type ProjectFormat = "feature" | "halfHourPilot" | "hourPilot" | "short" | "unknown";
+export type ProjectFormat = "feature" | "halfHourPilot" | "hourPilot" | "unknown";
 
 export interface ProjectForm {
   firstName: string;

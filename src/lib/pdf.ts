@@ -13,6 +13,7 @@ export const PdfExtractionOptionsSchema = z
       .positive()
       .default(15 * 1024 * 1024),
     maxPages: z.number().int().positive().default(150),
+    minPages: z.number().int().positive().default(25),
     minimumReadableTextLength: z.number().int().nonnegative().default(1000),
     lowTextPageThreshold: z.number().int().nonnegative().default(40),
   })
@@ -121,6 +122,15 @@ export async function extractPdf(
   }
 
   try {
+    if (document.numPages < limits.minPages) {
+      throw new UnsupportedFileError("PDF is below the configured minimum page count.", {
+        details: {
+          reasonCode: "pdf_page_minimum",
+          pageCount: document.numPages,
+          minPages: limits.minPages,
+        },
+      });
+    }
     if (document.numPages > limits.maxPages) {
       throw new UnsupportedFileError("PDF exceeds configured page limit.", {
         details: {

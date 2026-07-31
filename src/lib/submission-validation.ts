@@ -21,7 +21,7 @@ export const UploadAuthorizationInputSchema = z
         email: WriterEmailSchema.optional(),
         imdbUrl: ImdbProfileUrlSchema.optional(),
         projectTitle: z.string().min(1).max(200),
-        format: z.enum(["feature", "halfHourPilot", "hourPilot", "short", "unknown"]),
+        format: z.enum(["feature", "halfHourPilot", "hourPilot", "unknown"]),
         primaryGenre: z.string().min(1).max(100),
         secondaryGenres: z.array(z.string().min(1).max(100)).max(5),
         approximatePageCount: z.number().int().positive().max(300),

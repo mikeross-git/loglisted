@@ -51,7 +51,7 @@ describe("single-use upload token", () => {
       fileSize: 100,
       mimeType: "application/pdf",
       projectTitle: "Project",
-      declaredFormat: "short",
+      declaredFormat: "feature",
       primaryGenre: "Comedy",
     });
     expect(() => manager.verify(`${issued.token}x`, first)).toThrow(AuthorizationError);
@@ -59,5 +59,25 @@ describe("single-use upload token", () => {
     expect(() => manager.verify(issued.token, second)).toThrow(AuthorizationError);
     now = new Date(now.getTime() + 2_000);
     expect(() => manager.verify(issued.token, first)).toThrow(AuthorizationError);
+  });
+
+  it("rejects the retired short format", () => {
+    const session = sessionManager.create("219f9e5d-0710-7220-a1d2-8bb230517924").session;
+    const manager = new UploadTokenManager(
+      "upload-signing-secret-that-is-long-enough",
+      new MemoryAbuseStore(),
+    );
+    expect(() =>
+      manager.issue({
+        anonymousSessionId: session.anonymousSessionId,
+        deviceIdHash: session.deviceIdHash,
+        fileHash: "c".repeat(64),
+        fileSize: 100,
+        mimeType: "application/pdf",
+        projectTitle: "Retired Short",
+        declaredFormat: "short" as never,
+        primaryGenre: "Drama",
+      }),
+    ).toThrow();
   });
 });
