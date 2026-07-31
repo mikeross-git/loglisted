@@ -1,107 +1,35 @@
 name: Bug report
-description: Report a problem with the reference implementation or repository
+description: Report a problem with the project
 title: "[Bug]: "
 labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug.
 
-* bug
-  body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem clearly.
+      placeholder: Tell us what happened.
+    validations:
+      required: true
 
-* type: markdown
-  attributes:
-  value: |
-  Thanks for reporting a bug. Please include enough detail for someone else to reproduce the problem.
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      placeholder: Tell us what you expected instead.
+    validations:
+      required: true
 
-  ```
-  Do not include private scripts, customer data, credentials, or copyrighted material you do not have permission to share.
-  ```
-
-* type: input
-  id: version
-  attributes:
-  label: Version
-  description: Which release, commit, or methodology version are you using?
-  placeholder: "Example: v0.2.0 or commit abc123"
-  validations:
-  required: true
-
-* type: dropdown
-  id: area
-  attributes:
-  label: Affected area
-  options:
-  - Scoring logic
-  - Command-line interface
-  - Input parsing
-  - Output formatting
-  - Documentation
-  - Tests
-  - Installation or dependencies
-  - Other
-  validations:
-  required: true
-
-* type: textarea
-  id: description
-  attributes:
-  label: What happened?
-  description: Describe the problem clearly.
-  placeholder: Explain the behavior you observed.
-  validations:
-  required: true
-
-* type: textarea
-  id: expected
-  attributes:
-  label: What did you expect?
-  placeholder: Explain what you expected to happen instead.
-  validations:
-  required: true
-
-* type: textarea
-  id: reproduction
-  attributes:
-  label: Steps to reproduce
-  description: Provide the smallest set of steps that reproduces the problem.
-  placeholder: |
-  1. Run...
-  2. Provide...
-  3. Observe...
-  validations:
-  required: true
-
-* type: textarea
-  id: example
-  attributes:
-  label: Minimal example
-  description: Include a synthetic, public-domain, or otherwise shareable example.
-  render: text
-
-* type: textarea
-  id: environment
-  attributes:
-  label: Environment
-  description: Include your operating system, language version, package versions, or other relevant details.
-  placeholder: |
-  Operating system:
-  Python or runtime version:
-  Package version:
-  Other details:
-
-* type: textarea
-  id: logs
-  attributes:
-  label: Logs or error output
-  description: Remove secrets and personal information before posting.
-  render: shell
-
-* type: checkboxes
-  id: checks
-  attributes:
-  label: Submission checks
-  options:
-  - label: I searched existing issues for the same problem.
-  required: true
-  - label: I removed private, confidential, and identifying information.
-  required: true
-  - label: I have permission to share any included material.
-  required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: I searched for an existing issue.
+          required: true
