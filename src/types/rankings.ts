@@ -30,7 +30,24 @@ export interface PublicRankingRecord {
 }
 
 export interface PublicRankingsResponse {
-  version: 1;
+  version: 2;
   generatedAt: string;
+  page: number;
+  pageSize: 25 | 50 | 100;
+  totalRecords: number;
+  totalPages: number;
+  availableFormats: string[];
+  availableGenres: string[];
   records: PublicRankingRecord[];
+}
+
+export interface PublicRankingsQuery {
+  search: string;
+  format: string;
+  genre: string;
+  scoreKey: RankingScoreKey;
+  minimumScore: number | null;
+  direction: "asc" | "desc";
+  page: number;
+  pageSize: 25 | 50 | 100;
 }

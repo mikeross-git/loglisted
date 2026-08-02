@@ -163,7 +163,7 @@ export const ConfigSchema = z
     FRAMER_PROJECT_ID: optionalSecret,
     FRAMER_COLLECTION_ID: optionalSecret,
     FRAMER_RANKINGS_ENABLED: booleanFromEnvironment.default(false),
-    FRAMER_RANKINGS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
+    FRAMER_RANKINGS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(600),
   })
   .strict()
   .superRefine((config, context) => {

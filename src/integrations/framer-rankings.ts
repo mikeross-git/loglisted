@@ -2,6 +2,7 @@ import type { FramerCmsConfig, FramerCmsConnector } from "./framer-cms.js";
 import { defaultFramerCmsConnector, resolveFramerFieldMap } from "./framer-cms.js";
 import type {
   PublicRankingRecord,
+  PublicRankingsQuery,
   PublicRankingsResponse,
   RankingScores,
 } from "../types/rankings.js";
@@ -10,6 +11,17 @@ export interface FramerRankingsConfig extends FramerCmsConfig {
   FRAMER_RANKINGS_ENABLED: boolean;
   FRAMER_RANKINGS_CACHE_TTL_SECONDS: number;
 }
+
+const defaultQuery: PublicRankingsQuery = {
+  search: "",
+  format: "",
+  genre: "",
+  scoreKey: "overall",
+  minimumScore: null,
+  direction: "desc",
+  page: 1,
+  pageSize: 25,
+};
 
 function textValue(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -46,7 +58,14 @@ function websiteValue(value: unknown): string | null {
 }
 
 export class FramerRankingsReader {
-  private cached: { expiresAt: number; value: PublicRankingsResponse } | undefined;
+  private cached:
+    | {
+        expiresAt: number;
+        records: PublicRankingRecord[];
+        availableFormats: string[];
+        availableGenres: string[];
+      }
+    | undefined;
 
   constructor(
     private readonly config: FramerRankingsConfig,
@@ -66,14 +85,16 @@ export class FramerRankingsReader {
     );
   }
 
-  async getPublicRankings(): Promise<PublicRankingsResponse> {
+  async getPublicRankings(
+    query: PublicRankingsQuery = defaultQuery,
+  ): Promise<PublicRankingsResponse> {
     if (!this.enabled)
       throw Object.assign(new Error("Public rankings are disabled."), { status: 503 });
     if (!this.configured) {
       throw Object.assign(new Error("Public rankings are not configured."), { status: 503 });
     }
     const now = this.now();
-    if (this.cached && this.cached.expiresAt > now) return this.cached.value;
+    if (this.cached && this.cached.expiresAt > now) return paginate(this.cached, query, now);
 
     const projectId = this.config.FRAMER_PROJECT_ID;
     const token = this.config.FRAMER_API_TOKEN;
@@ -118,7 +139,7 @@ export class FramerRankingsReader {
         }
       }
       const records = items
-        .filter((item) => !item.draft)
+        .filter((item) => !item.draft && valueIsEnabled(item.fieldData?.[map.showOnLoglist]?.value))
         .map((item): PublicRankingRecord | null => {
           const data = item.fieldData;
           if (!data) return null;
@@ -163,18 +184,81 @@ export class FramerRankingsReader {
           };
         })
         .filter((item): item is PublicRankingRecord => item !== null);
-      const response: PublicRankingsResponse = {
-        version: 1,
-        generatedAt: new Date(now).toISOString(),
-        records,
-      };
-      this.cached = {
+      const snapshot = {
         expiresAt: now + this.config.FRAMER_RANKINGS_CACHE_TTL_SECONDS * 1_000,
-        value: response,
+        records,
+        availableFormats: uniqueSorted(records.map((record) => record.format)),
+        availableGenres: uniqueSorted(records.map((record) => record.genre)),
       };
-      return response;
+      this.cached = snapshot;
+      return paginate(snapshot, query, now);
     } finally {
       await connection.disconnect().catch(() => undefined);
     }
   }
+}
+
+function valueIsEnabled(value: unknown): boolean {
+  return (
+    value === true || (typeof value === "string" && ["yes", "true"].includes(value.toLowerCase()))
+  );
+}
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right));
+}
+
+function paginate(
+  snapshot: {
+    records: PublicRankingRecord[];
+    availableFormats: string[];
+    availableGenres: string[];
+  },
+  query: PublicRankingsQuery,
+  now: number,
+): PublicRankingsResponse {
+  const search = query.search.trim().toLocaleLowerCase();
+  const filtered = snapshot.records
+    .filter(
+      (record) =>
+        !search ||
+        `${record.writerName} ${record.scriptTitle} ${record.logline}`
+          .toLocaleLowerCase()
+          .includes(search),
+    )
+    .filter((record) => !query.format || record.format === query.format)
+    .filter((record) => !query.genre || record.genre === query.genre)
+    .filter((record) => {
+      const score = record.scores[query.scoreKey];
+      return query.minimumScore === null || (score !== null && score >= query.minimumScore);
+    })
+    .sort((left, right) => {
+      const leftScore = left.scores[query.scoreKey];
+      const rightScore = right.scores[query.scoreKey];
+      if (leftScore === null && rightScore === null)
+        return left.scriptTitle.localeCompare(right.scriptTitle);
+      if (leftScore === null) return 1;
+      if (rightScore === null) return -1;
+      const difference = leftScore - rightScore;
+      return difference === 0
+        ? left.scriptTitle.localeCompare(right.scriptTitle)
+        : query.direction === "asc"
+          ? difference
+          : -difference;
+    });
+  const totalRecords = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / query.pageSize));
+  const page = Math.min(query.page, totalPages);
+  const offset = (page - 1) * query.pageSize;
+  return {
+    version: 2,
+    generatedAt: new Date(now).toISOString(),
+    page,
+    pageSize: query.pageSize,
+    totalRecords,
+    totalPages,
+    availableFormats: snapshot.availableFormats,
+    availableGenres: snapshot.availableGenres,
+    records: filtered.slice(offset, offset + query.pageSize),
+  };
 }

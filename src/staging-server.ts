@@ -302,8 +302,9 @@ export function createStagingApp(
   app.get("/api/health", health);
   app.get(
     "/api/rankings",
-    route(async (_request, response) => {
-      await sendWebResponse(await getPublicRankings(rankings), response);
+    route(async (request, response) => {
+      const parameters = new URL(request.originalUrl, "http://localhost").searchParams;
+      await sendWebResponse(await getPublicRankings(rankings, parameters), response);
     }),
   );
 

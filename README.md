@@ -374,19 +374,25 @@ adapter continues to treat the `Scripts` collection as the source of truth.
 
 ### Data path and privacy boundary
 
-1. `GET /api/rankings` asks the Framer Server API for the configured collection.
-2. The backend resolves fields by exact display name, removes draft and incomplete records, maps
-   enum IDs to their display names, and clamps numeric scores to the 0–10 display range.
-3. The response contains writer name, script title, logline, format, genre, slug, IMDb URL, professional website URL, updated
+1. `GET /api/rankings` accepts search, format, genre, score, minimum-score, direction, page, and
+   page-size parameters. Page sizes are restricted to 25, 50, or 100.
+2. The backend asks the Framer Server API for the configured collection only when its transformed
+   snapshot cache expires. It resolves fields by exact display name, removes drafts, excludes records
+   where `Show on Loglist` is not enabled, maps enum IDs, and clamps scores to the 0–10 display range.
+3. Search, filtering, selected-score sorting, counts, and pagination run on the backend. The browser
+   receives only the requested page rather than the complete CMS collection.
+4. The response contains writer name, script title, logline, format, genre, slug, IMDb URL, professional website URL, updated
    timestamp, and eleven scores. It never contains `Email`, Framer credentials, internal field IDs,
    screenplay files, or screenplay text.
-4. The response is cached in memory for `FRAMER_RANKINGS_CACHE_TTL_SECONDS` (60 seconds by default).
+5. The transformed CMS snapshot is cached in memory for `FRAMER_RANKINGS_CACHE_TTL_SECONDS` (600
+   seconds by default). Render still reads the complete CMS collection on a cache miss because the
+   current Framer API exposes `getItems()` rather than queryable collection pagination.
 
 Enable the endpoint on the backend only:
 
 ```dotenv
 FRAMER_RANKINGS_ENABLED=true
-FRAMER_RANKINGS_CACHE_TTL_SECONDS=60
+FRAMER_RANKINGS_CACHE_TTL_SECONDS=600
 FRAMER_API_TOKEN=server-only-token
 FRAMER_PROJECT_ID=A3RwefBUP4USDJqrWaaE
 FRAMER_COLLECTION_ID=F7qGD3E3z
@@ -409,6 +415,7 @@ when public rankings are disabled or unavailable.
 | Genre                 | `Genre Category` (string/reference label), falling back to `Genre Dropdown`                                                                                                |
 | IMDb                  | `IMDB`                                                                                                                                                                     |
 | Professional website  | `Professional Website`                                                                                                                                                     |
+| Public eligibility    | `Show on Loglist` (Boolean; only enabled records are returned)                                                                                                             |
 | Format                | `Format`                                                                                                                                                                   |
 | Profile fallback      | CMS item `slug`                                                                                                                                                            |
 

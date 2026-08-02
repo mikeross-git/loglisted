@@ -54,6 +54,7 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   genreDropdown: "Genre Dropdown",
   imdb: "IMDB",
   website: "Professional Website",
+  showOnLoglist: "Show on Loglist",
   format: "Format",
 });
 
@@ -275,6 +276,7 @@ export function buildFramerCmsItem(
     genreDropdown: result.declaredGenre.trim(),
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     website: websiteUrl === "" ? undefined : websiteUrl,
+    showOnLoglist: true,
     format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
   };
   const fieldData: FieldDataInput = {};

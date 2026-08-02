@@ -25,7 +25,6 @@ interface PublicRankingRecord {
   format: string;
   genre: string;
   imdbUrl: string | null;
-  websiteUrl: string | null;
   updatedAt: string | null;
   scores: RankingScores;
 }
@@ -117,7 +116,6 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Half-Hour TV Pilot",
     genre: "Fantasy",
     imdbUrl: "https://www.imdb.com/",
-    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 9.1,
@@ -142,7 +140,6 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Hour TV Pilot",
     genre: "Sci-Fi",
     imdbUrl: null,
-    websiteUrl: "https://example.com/rowan-calloway",
     updatedAt: null,
     scores: {
       overall: 9.0,
@@ -168,7 +165,6 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Feature",
     genre: "Dark Comedy",
     imdbUrl: null,
-    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 8.9,
@@ -249,21 +245,47 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
     format,
     genre,
     imdbUrl: nullableString(item["imdbUrl"]),
-    websiteUrl: nullableString(item["websiteUrl"]),
     updatedAt: nullableString(item["updatedAt"]),
     scores,
   };
 }
 
-function parseResponse(value: unknown): PublicRankingRecord[] | null {
+interface PublicRankingsPage {
+  records: PublicRankingRecord[];
+  page: number;
+  pageSize: PageSize;
+  totalRecords: number;
+  totalPages: number;
+  availableFormats: string[];
+  availableGenres: string[];
+}
+
+function parseResponse(value: unknown): PublicRankingsPage | null {
   if (!value || typeof value !== "object") {
     return null;
   }
 
   const response = value as Record<string, unknown>;
   const recordsValue = response["records"];
+  const page = response["page"];
+  const pageSize = response["pageSize"];
+  const totalRecords = response["totalRecords"];
+  const totalPages = response["totalPages"];
+  const availableFormats = response["availableFormats"];
+  const availableGenres = response["availableGenres"];
 
-  if (!Array.isArray(recordsValue)) {
+  if (
+    !Array.isArray(recordsValue) ||
+    typeof page !== "number" ||
+    typeof pageSize !== "number" ||
+    !isPageSize(pageSize) ||
+    typeof totalRecords !== "number" ||
+    typeof totalPages !== "number" ||
+    !Array.isArray(availableFormats) ||
+    !availableFormats.every((item) => typeof item === "string") ||
+    !Array.isArray(availableGenres) ||
+    !availableGenres.every((item) => typeof item === "string")
+  ) {
     return null;
   }
 
@@ -279,7 +301,15 @@ function parseResponse(value: unknown): PublicRankingRecord[] | null {
     records.push(record);
   }
 
-  return records;
+  return {
+    records,
+    page,
+    pageSize,
+    totalRecords,
+    totalPages,
+    availableFormats,
+    availableGenres,
+  };
 }
 
 function readQuery(defaultPageSize: PageSize): RankingsQuery {
@@ -316,67 +346,21 @@ function readQuery(defaultPageSize: PageSize): RankingsQuery {
   };
 }
 
-function applyQuery(records: PublicRankingRecord[], query: RankingsQuery): PublicRankingRecord[] {
-  const search = query.search.trim().toLocaleLowerCase();
-
-  return [...records]
-    .filter((record) => {
-      if (!search) {
-        return true;
-      }
-
-      return [record.writerName, record.scriptTitle, record.logline]
-        .join(" ")
-        .toLocaleLowerCase()
-        .includes(search);
-    })
-    .filter((record) => {
-      return !query.format || record.format === query.format;
-    })
-    .filter((record) => {
-      return !query.genre || record.genre === query.genre;
-    })
-    .filter((record) => {
-      if (query.minimumScore === null) {
-        return true;
-      }
-
-      const score = record.scores[query.scoreKey];
-
-      return score !== null && score >= query.minimumScore;
-    })
-    .sort((left, right) => {
-      const leftScore = left.scores[query.scoreKey];
-      const rightScore = right.scores[query.scoreKey];
-
-      if (leftScore === null && rightScore === null) {
-        return left.scriptTitle.localeCompare(right.scriptTitle);
-      }
-
-      if (leftScore === null) {
-        return 1;
-      }
-
-      if (rightScore === null) {
-        return -1;
-      }
-
-      const difference = leftScore - rightScore;
-
-      if (difference === 0) {
-        return left.scriptTitle.localeCompare(right.scriptTitle);
-      }
-
-      return query.direction === "asc" ? difference : -difference;
-    });
-}
-
 function formatScore(score: number | null): string {
   return score === null ? "—" : score.toFixed(1);
 }
 
-function buildEndpoint(apiBaseUrl: string): string {
-  return `${apiBaseUrl.replace(/\/$/, "")}/api/rankings`;
+function buildEndpoint(apiBaseUrl: string, query: RankingsQuery): string {
+  const parameters = new URLSearchParams();
+  if (query.search.trim()) parameters.set("search", query.search.trim());
+  if (query.format) parameters.set("format", query.format);
+  if (query.genre) parameters.set("genre", query.genre);
+  parameters.set("score", query.scoreKey);
+  if (query.minimumScore !== null) parameters.set("minScore", String(query.minimumScore));
+  parameters.set("direction", query.direction);
+  parameters.set("page", String(query.page));
+  parameters.set("pageSize", String(query.pageSize));
+  return `${apiBaseUrl.replace(/\/$/, "")}/api/rankings?${parameters.toString()}`;
 }
 
 function buildProfileUrl(prefix: string, slug: string): string {
@@ -392,8 +376,7 @@ function ContactLink({
   record: PublicRankingRecord;
   profilePathPrefix: string;
 }) {
-  const href =
-    record.imdbUrl ?? record.websiteUrl ?? buildProfileUrl(profilePathPrefix, record.slug);
+  const href = record.imdbUrl ?? buildProfileUrl(profilePathPrefix, record.slug);
 
   return (
     <a
@@ -404,9 +387,7 @@ function ContactLink({
       aria-label={
         record.imdbUrl
           ? `Open ${record.writerName} on IMDb`
-          : record.websiteUrl
-            ? `Open ${record.writerName} website`
-            : `Open ${record.writerName} profile`
+          : `Open ${record.writerName} profile`
       }
     >
       {record.imdbUrl ? (
@@ -547,6 +528,10 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
   const [records, setRecords] = React.useState<PublicRankingRecord[]>(
     canvasMode ? SAMPLE_RECORDS : [],
   );
+  const [availableFormats, setAvailableFormats] = React.useState<string[]>([]);
+  const [availableGenres, setAvailableGenres] = React.useState<string[]>([]);
+  const [totalRecords, setTotalRecords] = React.useState(canvasMode ? SAMPLE_RECORDS.length : 0);
+  const [totalPages, setTotalPages] = React.useState(1);
 
   const [loading, setLoading] = React.useState(!canvasMode);
 
@@ -583,44 +568,53 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
     setLoading(true);
     setError(null);
 
-    void fetch(buildEndpoint(apiBaseUrl), {
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-      },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Rankings request failed: ${response.status}`);
-        }
+    const delay = window.setTimeout(
+      () =>
+        void fetch(buildEndpoint(apiBaseUrl, query), {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              throw new Error(`Rankings request failed: ${response.status}`);
+            }
 
-        const responseValue: unknown = await response.json();
+            const responseValue: unknown = await response.json();
 
-        const parsedRecords = parseResponse(responseValue);
+            const parsedPage = parseResponse(responseValue);
 
-        if (!parsedRecords) {
-          throw new Error("The rankings response was invalid.");
-        }
+            if (!parsedPage) {
+              throw new Error("The rankings response was invalid.");
+            }
 
-        setRecords(parsedRecords);
-      })
-      .catch((cause: unknown) => {
-        if (cause instanceof DOMException && cause.name === "AbortError") {
-          return;
-        }
+            setRecords(parsedPage.records);
+            setAvailableFormats(parsedPage.availableFormats);
+            setAvailableGenres(parsedPage.availableGenres);
+            setTotalRecords(parsedPage.totalRecords);
+            setTotalPages(parsedPage.totalPages);
+          })
+          .catch((cause: unknown) => {
+            if (cause instanceof DOMException && cause.name === "AbortError") {
+              return;
+            }
 
-        setError("The Loglist is temporarily unavailable. Please try again shortly.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
+            setError("The Loglist is temporarily unavailable. Please try again shortly.");
+          })
+          .finally(() => {
+            if (!controller.signal.aborted) {
+              setLoading(false);
+            }
+          }),
+      query.search ? 300 : 0,
+    );
 
     return () => {
+      window.clearTimeout(delay);
       controller.abort();
     };
-  }, [apiBaseUrl, canvasMode]);
+  }, [apiBaseUrl, canvasMode, query]);
 
   React.useEffect(() => {
     if (canvasMode || typeof window === "undefined") {
@@ -660,25 +654,15 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
     );
   }, [query, canvasMode]);
 
-  const formats = React.useMemo(() => {
-    return Array.from(new Set(records.map((record) => record.format).filter(Boolean))).sort();
-  }, [records]);
-
-  const genres = React.useMemo(() => {
-    return Array.from(new Set(records.map((record) => record.genre).filter(Boolean))).sort();
-  }, [records]);
-
-  const filteredRecords = React.useMemo(() => {
-    return applyQuery(records, query).slice(0, Math.max(1, maxRows));
-  }, [records, query, maxRows]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredRecords.length / query.pageSize));
-
-  const currentPage = Math.min(query.page, pageCount);
-
-  const firstRow = (currentPage - 1) * query.pageSize;
-
-  const visibleRecords = filteredRecords.slice(firstRow, firstRow + query.pageSize);
+  const formats = canvasMode
+    ? Array.from(new Set(records.map((record) => record.format).filter(Boolean))).sort()
+    : availableFormats;
+  const genres = canvasMode
+    ? Array.from(new Set(records.map((record) => record.genre).filter(Boolean))).sort()
+    : availableGenres;
+  const visibleRecords = records.slice(0, Math.max(1, maxRows));
+  const pageCount = canvasMode ? 1 : totalPages;
+  const currentPage = canvasMode ? 1 : Math.min(query.page, pageCount);
 
   function updateQuery(change: Partial<RankingsQuery>, resetPage = true) {
     setQuery((current) => ({
@@ -870,7 +854,7 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
           <p className="lr-count" aria-live="polite">
             {loading
               ? "Loading rankings…"
-              : `${filteredRecords.length} ${filteredRecords.length === 1 ? "result" : "results"}`}
+              : `${totalRecords} ${totalRecords === 1 ? "result" : "results"}`}
           </p>
 
           <button type="button" className="lr-clear" onClick={clearFilters}>
@@ -1178,13 +1162,13 @@ const STYLES = `
     background: #F7EDDE;
     border: 1px solid var(--lr-border);
     border-radius: 6px;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1.3;
 }
 
 .loglisted-rankings select {
     padding-right: 42px;
-    font-size: 16px;
+    font-size: 14px;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%2372695F' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat;

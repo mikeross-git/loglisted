@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import {
   rankingScoreKeys,
   type PublicRankingRecord,
@@ -215,9 +215,33 @@ function validResponse(value: unknown): PublicRankingsResponse | null {
   if (!Array.isArray(records)) return null;
   const parsedRecords = records.map(parseRecord);
   if (parsedRecords.some((record) => record === null)) return null;
+  const source = value as Record<string, unknown>;
+  const page = source["page"];
+  const pageSize = source["pageSize"];
+  const totalRecords = source["totalRecords"];
+  const totalPages = source["totalPages"];
+  const availableFormats = source["availableFormats"];
+  const availableGenres = source["availableGenres"];
+  if (
+    typeof page !== "number" ||
+    !pageSizes.includes(pageSize as 25 | 50 | 100) ||
+    typeof totalRecords !== "number" ||
+    typeof totalPages !== "number" ||
+    !Array.isArray(availableFormats) ||
+    !availableFormats.every((item) => typeof item === "string") ||
+    !Array.isArray(availableGenres) ||
+    !availableGenres.every((item) => typeof item === "string")
+  )
+    return null;
   return {
-    version: 1,
-    generatedAt: new Date().toISOString(),
+    version: 2,
+    generatedAt: typeof source["generatedAt"] === "string" ? source["generatedAt"] : "",
+    page,
+    pageSize: pageSize as 25 | 50 | 100,
+    totalRecords,
+    totalPages,
+    availableFormats,
+    availableGenres,
     records: parsedRecords.filter((record): record is PublicRankingRecord => record !== null),
   };
 }
@@ -275,8 +299,17 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
 function formatScore(score: number | null): string {
   return score === null ? "—" : score.toFixed(1);
 }
-function endpoint(base: string): string {
-  return `${base.replace(/\/$/, "")}/api/rankings`;
+function endpoint(base: string, query: RankingsQuery): string {
+  const parameters = new URLSearchParams();
+  if (query.search.trim()) parameters.set("search", query.search.trim());
+  if (query.format) parameters.set("format", query.format);
+  if (query.genre) parameters.set("genre", query.genre);
+  parameters.set("score", query.scoreKey);
+  if (query.minimumScore !== null) parameters.set("minScore", String(query.minimumScore));
+  parameters.set("direction", query.direction);
+  parameters.set("page", String(query.page));
+  parameters.set("pageSize", String(query.pageSize));
+  return `${base.replace(/\/$/, "")}/api/rankings?${parameters.toString()}`;
 }
 
 export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
@@ -299,6 +332,10 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
     canvasMode = false,
   } = props;
   const [records, setRecords] = useState<PublicRankingRecord[]>(canvasMode ? sampleRecords : []);
+  const [availableFormats, setAvailableFormats] = useState<string[]>([]);
+  const [availableGenres, setAvailableGenres] = useState<string[]>([]);
+  const [totalRecords, setTotalRecords] = useState(canvasMode ? sampleRecords.length : 0);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(!canvasMode);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState<RankingsQuery>(() =>
@@ -312,25 +349,36 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    void fetch(endpoint(apiBaseUrl), {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("request failed");
-        const parsed = validResponse(await response.json());
-        if (!parsed) throw new Error("invalid response");
-        setRecords(parsed.records);
-      })
-      .catch((cause: unknown) => {
-        if (!(cause instanceof DOMException && cause.name === "AbortError"))
-          setError("The Loglist is temporarily unavailable. Please try again shortly.");
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [apiBaseUrl, canvasMode, maxRows]);
+    const delay = window.setTimeout(
+      () =>
+        void fetch(endpoint(apiBaseUrl, query), {
+          signal: controller.signal,
+          headers: { accept: "application/json" },
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("request failed");
+            const parsed = validResponse(await response.json());
+            if (!parsed) throw new Error("invalid response");
+            setRecords(parsed.records);
+            setAvailableFormats(parsed.availableFormats);
+            setAvailableGenres(parsed.availableGenres);
+            setTotalRecords(parsed.totalRecords);
+            setTotalPages(parsed.totalPages);
+          })
+          .catch((cause: unknown) => {
+            if (!(cause instanceof DOMException && cause.name === "AbortError"))
+              setError("The Loglist is temporarily unavailable. Please try again shortly.");
+          })
+          .finally(() => {
+            if (!controller.signal.aborted) setLoading(false);
+          }),
+      query.search ? 300 : 0,
+    );
+    return () => {
+      window.clearTimeout(delay);
+      controller.abort();
+    };
+  }, [apiBaseUrl, canvasMode, query]);
 
   useEffect(() => {
     if (canvasMode || typeof window === "undefined") return;
@@ -352,21 +400,15 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
     );
   }, [query, canvasMode, initialPageSize]);
 
-  const formats = useMemo(
-    () => [...new Set(records.map((r) => r.format).filter(Boolean))].sort(),
-    [records],
-  );
-  const genres = useMemo(
-    () => [...new Set(records.map((r) => r.genre).filter(Boolean))].sort(),
-    [records],
-  );
-  const filtered = useMemo(
-    () => applyRankingsQuery(records, query).slice(0, maxRows),
-    [records, query, maxRows],
-  );
-  const pageCount = Math.max(1, Math.ceil(filtered.length / query.pageSize));
-  const currentPage = Math.min(query.page, pageCount);
-  const visible = filtered.slice((currentPage - 1) * query.pageSize, currentPage * query.pageSize);
+  const formats = canvasMode
+    ? [...new Set(records.map((record) => record.format).filter(Boolean))].sort()
+    : availableFormats;
+  const genres = canvasMode
+    ? [...new Set(records.map((record) => record.genre).filter(Boolean))].sort()
+    : availableGenres;
+  const visible = records.slice(0, maxRows);
+  const pageCount = canvasMode ? 1 : totalPages;
+  const currentPage = canvasMode ? 1 : Math.min(query.page, pageCount);
   const update = (change: Partial<RankingsQuery>, resetPage = true) =>
     setQuery((previous) => ({ ...previous, ...change, ...(resetPage ? { page: 1 } : {}) }));
   const clear = () =>
@@ -480,7 +522,7 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
         <p className="loglisted-rankings__count" aria-live="polite">
           {loading
             ? "Loading rankings…"
-            : `${filtered.length} ${filtered.length === 1 ? "result" : "results"}`}
+            : `${totalRecords} ${totalRecords === 1 ? "result" : "results"}`}
         </p>
         <button type="button" className="loglisted-rankings__clear" onClick={clear}>
           Clear all filters

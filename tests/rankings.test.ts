@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-import { getPublicRankings } from "../src/api/rankings.js";
+import { getPublicRankings, parseRankingsQuery } from "../src/api/rankings.js";
 import {
   ScreenplayRankingsTable,
   applyRankingsQuery,
@@ -19,7 +19,14 @@ function fields(): CmsFieldDescriptor[] {
   return Object.entries(FRAMER_FIELD_DISPLAY_NAMES).map(([key, name], index) => ({
     id: `${index}-${key}`,
     name,
-    type: key === "genreDropdown" ? "enum" : key.endsWith("Score") ? "number" : "string",
+    type:
+      key === "genreDropdown"
+        ? "enum"
+        : key.endsWith("Score")
+          ? "number"
+          : key === "showOnLoglist"
+            ? "boolean"
+            : "string",
     ...(key === "genreDropdown" ? { cases: [{ id: "comedy", name: "Comedy" }] } : {}),
   }));
 }
@@ -30,7 +37,7 @@ function fieldId(key: keyof typeof FRAMER_FIELD_DISPLAY_NAMES): string {
   return field.id;
 }
 
-function fieldData(email: string, overall: number) {
+function fieldData(email: string, overall: number, showOnLoglist = true) {
   const data: Record<string, { type: string; value: unknown }> = {
     [fieldId("writerName")]: { type: "string", value: "Writer One" },
     [fieldId("email")]: { type: "string", value: email },
@@ -39,6 +46,7 @@ function fieldData(email: string, overall: number) {
     [fieldId("format")]: { type: "string", value: "Feature" },
     [fieldId("genreDropdown")]: { type: "enum", value: "comedy" },
     [fieldId("imdb")]: { type: "link", value: "https://www.imdb.com/name/nm0000001/" },
+    [fieldId("showOnLoglist")]: { type: "boolean", value: showOnLoglist },
   };
   for (const key of [
     "overallScore",
@@ -71,6 +79,12 @@ function createReader() {
               draft: false,
               updatedAt: "2026-08-01T00:00:00.000Z",
               fieldData: fieldData("private@example.com", 12),
+            },
+            {
+              id: "hidden",
+              slug: "hidden",
+              draft: false,
+              fieldData: fieldData("hidden@example.com", 9, false),
             },
             {
               id: "draft",
@@ -161,8 +175,28 @@ describe("public screenplay rankings", () => {
     const { instance } = createReader();
     const response = await instance.getPublicRankings();
     expect(response.records).toHaveLength(1);
+    expect(response).toMatchObject({ version: 2, page: 1, pageSize: 25, totalRecords: 1 });
     expect(response.records[0]).toMatchObject({ genre: "Comedy", scores: { overall: 10 } });
     expect(JSON.stringify(response)).not.toContain("private@example.com");
+  });
+
+  it("validates server pagination and filter query parameters", () => {
+    expect(
+      parseRankingsQuery(
+        new URLSearchParams(
+          "search=writer&format=Feature&genre=Comedy&score=dialogue&minScore=7&page=2&pageSize=50",
+        ),
+      ),
+    ).toEqual({
+      search: "writer",
+      format: "Feature",
+      genre: "Comedy",
+      scoreKey: "dialogue",
+      minimumScore: 7,
+      direction: "desc",
+      page: 2,
+      pageSize: 50,
+    });
   });
 
   it("uses the TTL cache and disconnects", async () => {
