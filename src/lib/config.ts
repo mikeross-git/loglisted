@@ -162,6 +162,8 @@ export const ConfigSchema = z
     FRAMER_API_TOKEN: optionalSecret,
     FRAMER_PROJECT_ID: optionalSecret,
     FRAMER_COLLECTION_ID: optionalSecret,
+    FRAMER_RANKINGS_ENABLED: booleanFromEnvironment.default(false),
+    FRAMER_RANKINGS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
   })
   .strict()
   .superRefine((config, context) => {
@@ -186,7 +188,7 @@ export const ConfigSchema = z
         message: "The production configuration requires production scoring mode.",
       });
     }
-    if (config.FRAMER_CMS_SYNC_ENABLED) {
+    if (config.FRAMER_CMS_SYNC_ENABLED || config.FRAMER_RANKINGS_ENABLED) {
       for (const key of [
         "FRAMER_API_TOKEN",
         "FRAMER_PROJECT_ID",

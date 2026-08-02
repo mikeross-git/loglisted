@@ -8,6 +8,17 @@ declare module "framer" {
     String = "String",
   }
 
+  export enum RenderTarget {
+    canvas = "CANVAS",
+    preview = "PREVIEW",
+    export = "EXPORT",
+    thumbnail = "THUMBNAIL",
+  }
+
+  export namespace RenderTarget {
+    function current(): RenderTarget;
+  }
+
   export interface PropertyControl {
     type: ControlType;
     title?: string;

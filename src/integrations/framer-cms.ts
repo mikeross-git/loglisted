@@ -76,6 +76,9 @@ export interface CmsFieldDescriptor {
 export interface CmsItemDescriptor {
   id: string;
   slug: string;
+  draft?: boolean;
+  updatedAt?: string | undefined;
+  fieldData?: Readonly<Record<string, { type: string; value: unknown }>>;
 }
 
 export interface FramerCmsCollectionAdapter {
@@ -94,7 +97,7 @@ export type FramerCmsConnector = (
   token: string,
 ) => Promise<FramerCmsConnectionAdapter>;
 
-const defaultConnector: FramerCmsConnector = async (projectId, token) => {
+export const defaultFramerCmsConnector: FramerCmsConnector = async (projectId, token) => {
   const framer = await connect(projectId, token);
   return {
     async getCollection(id) {
@@ -108,6 +111,9 @@ const defaultConnector: FramerCmsConnector = async (projectId, token) => {
             // accessor may represent an external ID for managed collections.
             id: item.nodeId,
             slug: item.slug,
+            draft: item.draft,
+            updatedAt: item.updatedAt,
+            fieldData: item.fieldData,
           })),
         addItems: (items) => collection.addItems(items),
       };
@@ -304,7 +310,7 @@ function isTransient(error: unknown): boolean {
 export class FramerCmsSynchronizer {
   constructor(
     private readonly config: FramerCmsConfig,
-    private readonly connector: FramerCmsConnector = defaultConnector,
+    private readonly connector: FramerCmsConnector = defaultFramerCmsConnector,
     private readonly sleep: (milliseconds: number) => Promise<void> = (milliseconds) =>
       new Promise((resolve) => setTimeout(resolve, milliseconds)),
     private readonly maximumAttempts = 3,

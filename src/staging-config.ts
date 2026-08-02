@@ -85,6 +85,8 @@ export const StagingEnvironmentSchema = z
     FRAMER_API_TOKEN: z.string().optional(),
     FRAMER_PROJECT_ID: z.string().optional(),
     FRAMER_COLLECTION_ID: z.string().optional(),
+    FRAMER_RANKINGS_ENABLED: booleanFromEnvironment.default(false),
+    FRAMER_RANKINGS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(60),
   })
   .passthrough()
   .superRefine((config, context) => {
@@ -117,7 +119,7 @@ export const StagingEnvironmentSchema = z
         message: "Managed Turnstile mode cannot use a Cloudflare test secret.",
       });
     }
-    if (config.FRAMER_CMS_SYNC_ENABLED) {
+    if (config.FRAMER_CMS_SYNC_ENABLED || config.FRAMER_RANKINGS_ENABLED) {
       for (const key of [
         "FRAMER_API_TOKEN",
         "FRAMER_PROJECT_ID",

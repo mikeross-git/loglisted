@@ -9,6 +9,7 @@ import { postAnalyze } from "./api/analyze.js";
 import { deleteResult, getResult } from "./api/result.js";
 import { postSession } from "./api/session.js";
 import { postUploadAuthorize } from "./api/upload-authorize.js";
+import { getPublicRankings } from "./api/rankings.js";
 import { AnonymousSessionManager } from "./lib/anonymous-session.js";
 import { ScriptBudget } from "./lib/budget.js";
 import { VersionedCache } from "./lib/cache.js";
@@ -31,6 +32,7 @@ import {
   loadFramerCmsConfig,
   syncFramerCmsBestEffort,
 } from "./integrations/framer-cms.js";
+import { FramerRankingsReader } from "./integrations/framer-rankings.js";
 import { SafeLogger } from "./lib/logger.js";
 
 try {
@@ -92,6 +94,11 @@ const DevEnvironmentSchema = z
 
 const environment = DevEnvironmentSchema.parse(process.env);
 const framerCms = new FramerCmsSynchronizer(loadFramerCmsConfig(process.env));
+const rankings = new FramerRankingsReader({
+  ...loadFramerCmsConfig(process.env),
+  FRAMER_RANKINGS_ENABLED: process.env["FRAMER_RANKINGS_ENABLED"] === "true",
+  FRAMER_RANKINGS_CACHE_TTL_SECONDS: Number(process.env["FRAMER_RANKINGS_CACHE_TTL_SECONDS"] ?? 60),
+});
 const logger = new SafeLogger();
 const requiredOrigins = ["http://localhost:5173", "http://127.0.0.1:5173"];
 if (!requiredOrigins.every((origin) => environment.ALLOWED_ORIGINS.includes(origin))) {
@@ -295,8 +302,16 @@ app.get("/api/health", (_request, response) => {
     storageMode: "memory",
     framerCmsSyncEnabled: framerCms.enabled,
     framerCmsConfigured: framerCms.configured,
+    rankingsEnabled: rankings.enabled,
   });
 });
+
+app.get(
+  "/api/rankings",
+  route(async (_request, response) => {
+    await sendWebResponse(await getPublicRankings(rankings), response);
+  }),
+);
 
 app.post(
   "/api/session",

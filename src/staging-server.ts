@@ -10,6 +10,7 @@ import { postAnalyze } from "./api/analyze.js";
 import { deleteResult, getResult } from "./api/result.js";
 import { postSession } from "./api/session.js";
 import { postUploadAuthorize } from "./api/upload-authorize.js";
+import { getPublicRankings } from "./api/rankings.js";
 import { AnonymousSessionManager } from "./lib/anonymous-session.js";
 import type { AnalyzePipelineDependencies } from "./lib/analyze-screenplay.js";
 import { ScriptBudget } from "./lib/budget.js";
@@ -39,6 +40,7 @@ import {
   syncFramerCmsBestEffort,
   type FramerCmsConnector,
 } from "./integrations/framer-cms.js";
+import { FramerRankingsReader } from "./integrations/framer-rankings.js";
 
 export interface StagingProviderFactories {
   mock?: (options: MockLlmProviderOptions) => LlmProvider;
@@ -178,6 +180,18 @@ export function createStagingApp(
     },
     options.framerCmsConnector,
   );
+  const rankings = new FramerRankingsReader(
+    {
+      FRAMER_CMS_SYNC_ENABLED: config.FRAMER_CMS_SYNC_ENABLED,
+      FRAMER_CMS_PUBLISH_MODE: config.FRAMER_CMS_PUBLISH_MODE,
+      FRAMER_API_TOKEN: config.FRAMER_API_TOKEN,
+      FRAMER_PROJECT_ID: config.FRAMER_PROJECT_ID,
+      FRAMER_COLLECTION_ID: config.FRAMER_COLLECTION_ID,
+      FRAMER_RANKINGS_ENABLED: config.FRAMER_RANKINGS_ENABLED,
+      FRAMER_RANKINGS_CACHE_TTL_SECONDS: config.FRAMER_RANKINGS_CACHE_TTL_SECONDS,
+    },
+    options.framerCmsConnector,
+  );
   const cacheStore = new MemoryCacheStore();
   const cache = new VersionedCache(cacheStore);
   const results = new MemoryResultStore();
@@ -281,10 +295,17 @@ export function createStagingApp(
       ...stagingHealthStatus,
       framerCmsSyncEnabled: framerCms.enabled,
       framerCmsConfigured: framerCms.configured,
+      rankingsEnabled: rankings.enabled,
     });
   };
   app.get("/health", health);
   app.get("/api/health", health);
+  app.get(
+    "/api/rankings",
+    route(async (_request, response) => {
+      await sendWebResponse(await getPublicRankings(rankings), response);
+    }),
+  );
 
   app.post(
     "/api/session",

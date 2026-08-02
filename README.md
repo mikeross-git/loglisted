@@ -363,3 +363,102 @@ Full observed benchmarking requires these additional backend fields:
 The “Download PDF Report” action uses the browser’s print dialog and a dedicated print stylesheet,
 so no screenplay data is uploaded to a report service. “Copy share summary” creates a deterministic
 title, score, and qualified cohort sentence without screenplay text or private submission data.
+
+## Sortable public Loglist Code Component
+
+`ScreenplayRankingsTable` is an optional replacement for the native Framer table. Keep the native
+table published until this component has been verified. Framer Code Components cannot reliably
+read all records from a Collection List: Framer documents those internals as unsupported. The
+component therefore reads a sanitized public endpoint while the existing server-side Framer API
+adapter continues to treat the `Scripts` collection as the source of truth.
+
+### Data path and privacy boundary
+
+1. `GET /api/rankings` asks the Framer Server API for the configured collection.
+2. The backend resolves fields by exact display name, removes draft and incomplete records, maps
+   enum IDs to their display names, and clamps numeric scores to the 0–10 display range.
+3. The response contains writer name, script title, logline, format, genre, slug, IMDb URL, updated
+   timestamp, and eleven scores. It never contains `Email`, Framer credentials, internal field IDs,
+   screenplay files, or screenplay text.
+4. The response is cached in memory for `FRAMER_RANKINGS_CACHE_TTL_SECONDS` (60 seconds by default).
+
+Enable the endpoint on the backend only:
+
+```dotenv
+FRAMER_RANKINGS_ENABLED=true
+FRAMER_RANKINGS_CACHE_TTL_SECONDS=60
+FRAMER_API_TOKEN=server-only-token
+FRAMER_PROJECT_ID=A3RwefBUP4USDJqrWaaE
+FRAMER_COLLECTION_ID=F7qGD3E3z
+ALLOWED_ORIGINS=https://www.loglisted.com,https://loglisted.com
+```
+
+Do not prefix any credential with `VITE_`, and do not paste a Framer token into a Code Component
+property. CMS writing and public reading can be enabled independently. The endpoint returns `503`
+when public rankings are disabled or unavailable.
+
+### Exact CMS mapping
+
+| Public value          | Framer display name                                                                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Writer                | `Writer S Name`                                                                                                                                                            |
+| Script title          | `Script Title`                                                                                                                                                             |
+| Logline               | `Logline`                                                                                                                                                                  |
+| Overall               | `Overall Score`                                                                                                                                                            |
+| Premise through Craft | `Premise Score`, `Story Score`, `Structure Score`, `Characters Score`, `Dialogue Score`, `Pacing Score`, `Theme Score`, `Tone Score`, `Marketability Score`, `Craft Score` |
+| Genre                 | `Genre Category` (string/reference label), falling back to `Genre Dropdown`                                                                                                |
+| IMDb                  | `IMDB`                                                                                                                                                                     |
+| Format                | `Format`                                                                                                                                                                   |
+| Profile fallback      | CMS item `slug`                                                                                                                                                            |
+
+The public reader resolves a `Genre Category` collection reference to its label when necessary and
+uses the `Genre Dropdown` enum as a compatibility fallback for older records. `Email` and `Test`
+are intentionally not serialized. Draft items are excluded, matching Framer publishing behavior.
+
+### Framer installation
+
+1. Add `ScreenplayRankingsTable.tsx` and `loglisted-rankings-styles.ts` to the Framer project. For
+   Framer property controls, use the contents of `ScreenplayRankingsTable.framer.tsx` as the canvas
+   component and keep all three files in the same Code folder. If Framer rewrites extensions, keep
+   the relative filenames consistent with its generated imports.
+2. Drag `FramerScreenplayRankingsTable` onto a duplicate/staging section below the native table.
+   Do not remove or hide the native table yet.
+3. Set **API URL** to the public backend origin only, for example
+   `https://api-staging.loglisted.com` (no `/api/rankings` suffix).
+4. Set **Profile Path** to the existing CMS detail-route prefix. The default is `/loglist/`.
+5. Set the component width to Fill and height to Fit Content. The Framer canvas shows three sample
+   rows; Preview and the published site fetch real published CMS records.
+6. Confirm the published Framer origin is present exactly in backend `ALLOWED_ORIGINS`, redeploy the
+   backend configuration, then test Preview and the published page.
+
+### Verification
+
+```bash
+npm run format:check
+npm run typecheck
+npm run lint
+npm test
+npm run build
+```
+
+Also verify manually:
+
+- `/api/rankings` returns JSON and contains no `Email` or token-like values.
+- drafts do not appear; a newly published CMS item appears after the cache TTL.
+- search matches writer, title, and logline together with format, genre, selected-score minimum,
+  direction, and ranking category.
+- the Score heading and each displayed score change together.
+- 25/50/100 row pagination and URL query restoration work after refresh.
+- at mobile width, rows become keyboard-operable native `details` accordions.
+- IMDb links win when present; otherwise Profile opens the existing slug route.
+
+### Framer limitations and rollback
+
+Framer does not expose Collection List records as a supported Code Component array, so this design
+requires the backend and Framer Server API availability. Canvas data is illustrative only. Search
+and filtering happen in the browser after one sanitized collection fetch; for very large future
+collections, move query and pagination parameters server-side.
+
+Rollback is non-destructive: remove or hide the Code Component instance and reveal the untouched
+native CMS table. To disable only the JSON reader, set `FRAMER_RANKINGS_ENABLED=false` and redeploy
+the backend. This does not disable CMS result synchronization and does not modify CMS records.
