@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { ImdbProfileUrlSchema, WriterEmailSchema, WriterNameSchema } from "../types/project.js";
+import {
+  ImdbProfileUrlSchema,
+  ProfessionalWebsiteUrlSchema,
+  WriterEmailSchema,
+  WriterNameSchema,
+} from "../types/project.js";
 import { ValidationError } from "./errors.js";
 
 export const UploadAuthorizationInputSchema = z
@@ -20,6 +25,7 @@ export const UploadAuthorizationInputSchema = z
         lastName: WriterNameSchema.optional(),
         email: WriterEmailSchema.optional(),
         imdbUrl: ImdbProfileUrlSchema.optional(),
+        websiteUrl: ProfessionalWebsiteUrlSchema.optional(),
         projectTitle: z.string().min(1).max(200),
         format: z.enum(["feature", "halfHourPilot", "hourPilot", "unknown"]),
         primaryGenre: z.string().min(1).max(100),
@@ -32,7 +38,16 @@ export const UploadAuthorizationInputSchema = z
         acceptableUseAccepted: z.literal(true),
         aiProcessingAcknowledged: z.literal(true),
       })
-      .strict(),
+      .strict()
+      .superRefine((project, context) => {
+        if (!project.imdbUrl && !project.websiteUrl) {
+          context.addIssue({
+            code: "custom",
+            path: ["websiteUrl"],
+            message: "An IMDb profile or professional website is required.",
+          });
+        }
+      }),
     antiBot: z
       .object({
         website_confirm: z.string().max(500),

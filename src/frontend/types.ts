@@ -5,6 +5,7 @@ export interface ProjectForm {
   lastName: string;
   email: string;
   imdbUrl: string;
+  websiteUrl: string;
   projectTitle: string;
   format: ProjectFormat;
   primaryGenre: string;

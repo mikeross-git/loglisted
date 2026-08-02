@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { ImdbProfileUrlSchema, WriterEmailSchema, WriterNameSchema } from "../../types/project.js";
+import {
+  ImdbProfileUrlSchema,
+  ProfessionalWebsiteUrlSchema,
+  WriterEmailSchema,
+  WriterNameSchema,
+} from "../../types/project.js";
 import { FinalModelScoreSchema } from "../scorer.js";
 
 export const StoredResultSchema = z
@@ -27,6 +32,7 @@ export const StoredResultSchema = z
             lastName: WriterNameSchema,
             email: WriterEmailSchema,
             imdbUrl: ImdbProfileUrlSchema.optional(),
+            websiteUrl: ProfessionalWebsiteUrlSchema.optional(),
           })
           .strict()
           .optional(),

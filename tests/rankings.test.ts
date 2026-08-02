@@ -113,6 +113,7 @@ const records: PublicRankingRecord[] = [
     format: "Feature",
     genre: "Comedy",
     imdbUrl: null,
+    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 7,
@@ -137,6 +138,7 @@ const records: PublicRankingRecord[] = [
     format: "Feature",
     genre: "Drama",
     imdbUrl: null,
+    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 9,
@@ -202,8 +204,11 @@ describe("public screenplay rankings", () => {
       }),
     );
     expect(html).toContain("<table>");
-    expect(html).toContain("<details>");
+    expect(html).toContain("loglisted-rankings__mobile-card");
+    expect(html).not.toContain("<details>");
     expect(html).toContain("Overall Score");
+    expect(html).toContain("The arithmetic mean of all ten screenplay category scores.");
+    expect(html).toContain("loglisted-rankings__logline-preview");
     expect(html).not.toContain("Email");
   });
 });

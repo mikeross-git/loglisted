@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { AbuseAdmissionSchema } from "../src/types/abuse.js";
-import { ImdbProfileUrlSchema, WriterEmailSchema } from "../src/types/project.js";
+import {
+  ImdbProfileUrlSchema,
+  ProfessionalWebsiteUrlSchema,
+  WriterEmailSchema,
+} from "../src/types/project.js";
 import { CategoryScoresSchema } from "../src/types/scoring.js";
 import { SubmissionSchema } from "../src/types/submission.js";
 
@@ -59,5 +63,19 @@ describe("shared schemas", () => {
     expect(ImdbProfileUrlSchema.safeParse("https://www.imdb.com/title/tt1234567/").success).toBe(
       false,
     );
+  });
+
+  it("accepts public HTTPS professional and social website URLs", () => {
+    expect(ProfessionalWebsiteUrlSchema.safeParse("https://writer.example.com/").success).toBe(
+      true,
+    );
+    expect(
+      ProfessionalWebsiteUrlSchema.safeParse("https://www.instagram.com/example_writer/").success,
+    ).toBe(true);
+    expect(ProfessionalWebsiteUrlSchema.safeParse("http://writer.example.com/").success).toBe(
+      false,
+    );
+    expect(ProfessionalWebsiteUrlSchema.safeParse("javascript:alert(1)").success).toBe(false);
+    expect(ProfessionalWebsiteUrlSchema.safeParse("https://localhost/profile").success).toBe(false);
   });
 });

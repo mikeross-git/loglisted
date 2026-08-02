@@ -1,6 +1,10 @@
 import "@fontsource/cutive/400.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ImdbProfileUrlSchema, WriterEmailSchema } from "../types/project.js";
+import {
+  ImdbProfileUrlSchema,
+  ProfessionalWebsiteUrlSchema,
+  WriterEmailSchema,
+} from "../types/project.js";
 import { ApiClientError, ScreenplayApiClient, publicErrorMessages } from "./api-client.js";
 import { getOrCreateDeviceId } from "./device-session.js";
 import { ClientFileError, inspectAndHashPdf } from "./file-hash.js";
@@ -68,6 +72,7 @@ const initialProject: ProjectForm = {
   lastName: "",
   email: "",
   imdbUrl: "",
+  websiteUrl: "",
   projectTitle: "",
   format: "unknown",
   primaryGenre: "",
@@ -139,6 +144,8 @@ export default function FramerScreenplayUploader({
   const turnstileWidget = useRef<string | null>(null);
   const uploaderContainer = useRef<HTMLDivElement | null>(null);
   const reportContainer = useRef<HTMLDivElement | null>(null);
+  const fileErrorRef = useRef<HTMLParagraphElement | null>(null);
+  const submitErrorRef = useRef<HTMLParagraphElement | null>(null);
   const [session, setSession] = useState<BrowserSession | null>(null);
   const [project, setProject] = useState<ProjectForm>(initialProject);
   const [file, setFile] = useState<File | null>(null);
@@ -172,6 +179,22 @@ export default function FramerScreenplayUploader({
       reportContainer.current?.scrollIntoView({ block: "start", behavior: "auto" });
     });
   }, [report]);
+
+  useEffect(() => {
+    if (!fileError || !fileErrorRef.current) return;
+    window.requestAnimationFrame(() => {
+      fileErrorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      fileErrorRef.current?.focus({ preventScroll: true });
+    });
+  }, [fileError]);
+
+  useEffect(() => {
+    if (!error || !submitErrorRef.current) return;
+    window.requestAnimationFrame(() => {
+      submitErrorRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      submitErrorRef.current?.focus({ preventScroll: true });
+    });
+  }, [error]);
 
   useEffect(() => {
     let active = true;
@@ -294,6 +317,11 @@ export default function FramerScreenplayUploader({
   const emailIsValid = WriterEmailSchema.safeParse(project.email).success;
   const imdbIsValid =
     project.imdbUrl.trim().length === 0 || ImdbProfileUrlSchema.safeParse(project.imdbUrl).success;
+  const websiteIsValid =
+    project.websiteUrl.trim().length === 0 ||
+    ProfessionalWebsiteUrlSchema.safeParse(project.websiteUrl).success;
+  const publicContactProvided =
+    project.imdbUrl.trim().length > 0 || project.websiteUrl.trim().length > 0;
 
   const requiredComplete =
     Boolean(session) &&
@@ -301,6 +329,8 @@ export default function FramerScreenplayUploader({
     project.lastName.trim().length > 0 &&
     emailIsValid &&
     imdbIsValid &&
+    websiteIsValid &&
+    publicContactProvided &&
     project.projectTitle.trim().length > 0 &&
     project.format !== "unknown" &&
     project.primaryGenre.trim().length > 0 &&
@@ -493,8 +523,11 @@ export default function FramerScreenplayUploader({
 
                 <div className="loglisted-uploader__field">
                   <label className="loglisted-uploader__label" htmlFor="loglisted-imdb">
-                    Your IMDb Profile Link{" "}
-                    <span className="loglisted-uploader__optional">(optional)</span>
+                    Your IMDb Profile Link
+                    <span className="loglisted-uploader__optional">
+                      {" "}
+                      (IMDb or website required)
+                    </span>
                   </label>
                   <input
                     id="loglisted-imdb"
@@ -507,6 +540,7 @@ export default function FramerScreenplayUploader({
                     aria-invalid={!imdbIsValid}
                     aria-describedby={!imdbIsValid ? "loglisted-imdb-error" : undefined}
                     maxLength={500}
+                    required={project.websiteUrl.trim().length === 0}
                   />
                   {!imdbIsValid && (
                     <p
@@ -516,6 +550,37 @@ export default function FramerScreenplayUploader({
                     >
                       Enter a valid IMDb name-profile link, such as
                       https://www.imdb.com/name/nm1234567/.
+                    </p>
+                  )}
+                </div>
+                <div className="loglisted-uploader__field">
+                  <label className="loglisted-uploader__label" htmlFor="loglisted-website">
+                    Your Professional Website
+                    <span className="loglisted-uploader__optional">
+                      {" "}
+                      (IMDb or website required)
+                    </span>
+                  </label>
+                  <input
+                    id="loglisted-website"
+                    className="loglisted-uploader__input"
+                    type="url"
+                    inputMode="url"
+                    placeholder="https://www.yourwebsite.com/"
+                    value={project.websiteUrl}
+                    onChange={(event) => updateProject("websiteUrl", event.target.value)}
+                    aria-invalid={!websiteIsValid}
+                    aria-describedby={!websiteIsValid ? "loglisted-website-error" : undefined}
+                    maxLength={500}
+                    required={project.imdbUrl.trim().length === 0}
+                  />
+                  {!websiteIsValid && (
+                    <p
+                      className="loglisted-uploader__field-error"
+                      id="loglisted-website-error"
+                      role="alert"
+                    >
+                      Enter a valid public website beginning with https://.
                     </p>
                   )}
                 </div>
@@ -657,9 +722,11 @@ export default function FramerScreenplayUploader({
                 </div>
                 {fileError && (
                   <p
+                    ref={fileErrorRef}
                     className="loglisted-uploader__error-message loglisted-uploader__file-error"
                     id="loglisted-file-error"
                     role="alert"
+                    tabIndex={-1}
                   >
                     {fileError}
                   </p>
@@ -755,9 +822,11 @@ export default function FramerScreenplayUploader({
             )}
             {error && (
               <p
+                ref={submitErrorRef}
                 className="loglisted-uploader__error-message"
                 id="loglisted-submit-error"
                 role="alert"
+                tabIndex={-1}
               >
                 {error}
               </p>

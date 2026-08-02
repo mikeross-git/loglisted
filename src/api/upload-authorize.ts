@@ -217,6 +217,7 @@ export async function postUploadAuthorize(
       ...(input.project.lastName ? { lastName: input.project.lastName } : {}),
       ...(input.project.email ? { email: input.project.email } : {}),
       ...(input.project.imdbUrl ? { imdbUrl: input.project.imdbUrl } : {}),
+      ...(input.project.websiteUrl ? { websiteUrl: input.project.websiteUrl } : {}),
       projectTitle: input.project.projectTitle,
       ...(input.project.logline ? { logline: input.project.logline } : {}),
       declaredFormat: input.project.format,

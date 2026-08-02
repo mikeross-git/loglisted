@@ -47,6 +47,7 @@ const result: StoredResult = {
       lastName: " Doe ",
       email: "jane@example.com",
       imdbUrl: "https://www.imdb.com/name/nm0000001/",
+      websiteUrl: "https://janedoe.example.com/",
     },
     evaluationMode: "mock",
   },
@@ -63,7 +64,7 @@ function fields(): CmsFieldDescriptor[] {
           ? "enum"
           : key.endsWith("Score")
             ? "number"
-            : key === "imdb"
+            : key === "imdb" || key === "website"
               ? "link"
               : "string",
     ...(key === "genreDropdown"
@@ -100,6 +101,7 @@ describe("Framer CMS integration", () => {
     expect(fieldValue(item, "genreCategory")).toBe("Comedy");
     expect(fieldValue(item, "genreDropdown")).toBe("genre-comedy");
     expect(fieldValue(item, "logline")).toBe(result.internal.submissionLogline);
+    expect(fieldValue(item, "website")).toBe("https://janedoe.example.com/");
     expect(fieldValue(item, "overallScore")).toBe(7.6);
     for (const scoreKey of Object.keys(result.categoryScores)) {
       expect(fieldValue(item, `${scoreKey}Score`)).toBe(
@@ -120,6 +122,7 @@ describe("Framer CMS integration", () => {
         submissionContact: {
           ...contact,
           imdbUrl: undefined,
+          websiteUrl: undefined,
         },
       },
     };
@@ -127,6 +130,7 @@ describe("Framer CMS integration", () => {
     expect(fieldValue(item, "test")).toBe(false);
     expect(fieldValue(item, "logline")).toBeUndefined();
     expect(fieldValue(item, "imdb")).toBeUndefined();
+    expect(fieldValue(item, "website")).toBeUndefined();
     expect(item.draft).toBe(false);
   });
 

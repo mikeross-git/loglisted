@@ -24,6 +24,7 @@ export interface PublicRankingRecord {
   format: string;
   genre: string;
   imdbUrl: string | null;
+  websiteUrl: string | null;
   scores: RankingScores;
   updatedAt: string | null;
 }

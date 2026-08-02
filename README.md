@@ -314,11 +314,11 @@ the public API.
 
 The exact required display names are `Writer S Name`, `Email`, `Test`, `Script Title`, `Logline`,
 `Overall Score`, each of the ten named category score fields, `Genre Category`, `Genre Dropdown`,
-`IMDB`, and `Format`. `Genre Category` is the reference used for the Genres relationship;
+`IMDB`, `Professional Website`, and `Format`. `Genre Category` is the reference used for the Genres relationship;
 `Genre Dropdown` is the existing enum used by some Framer views. The backend keeps both values
 consistent. Framer's `Slug` is a built-in item property and is therefore not returned by
 `getFields()` or mapped as a custom field. `Test` may be Boolean, text, or an enum containing
-Yes/No. Scores must be Number. IMDB may be Link or text. Enum values are resolved by their
+Yes/No. Scores must be Number. IMDB and Professional Website may be Link or text. Enum values are resolved by their
 displayed option name.
 
 For staging, add the five Framer variables in Render's server environment, run the inspection
@@ -377,7 +377,7 @@ adapter continues to treat the `Scripts` collection as the source of truth.
 1. `GET /api/rankings` asks the Framer Server API for the configured collection.
 2. The backend resolves fields by exact display name, removes draft and incomplete records, maps
    enum IDs to their display names, and clamps numeric scores to the 0–10 display range.
-3. The response contains writer name, script title, logline, format, genre, slug, IMDb URL, updated
+3. The response contains writer name, script title, logline, format, genre, slug, IMDb URL, professional website URL, updated
    timestamp, and eleven scores. It never contains `Email`, Framer credentials, internal field IDs,
    screenplay files, or screenplay text.
 4. The response is cached in memory for `FRAMER_RANKINGS_CACHE_TTL_SECONDS` (60 seconds by default).
@@ -408,6 +408,7 @@ when public rankings are disabled or unavailable.
 | Premise through Craft | `Premise Score`, `Story Score`, `Structure Score`, `Characters Score`, `Dialogue Score`, `Pacing Score`, `Theme Score`, `Tone Score`, `Marketability Score`, `Craft Score` |
 | Genre                 | `Genre Category` (string/reference label), falling back to `Genre Dropdown`                                                                                                |
 | IMDb                  | `IMDB`                                                                                                                                                                     |
+| Professional website  | `Professional Website`                                                                                                                                                     |
 | Format                | `Format`                                                                                                                                                                   |
 | Profile fallback      | CMS item `slug`                                                                                                                                                            |
 
@@ -450,7 +451,7 @@ Also verify manually:
 - the Score heading and each displayed score change together.
 - 25/50/100 row pagination and URL query restoration work after refresh.
 - at mobile width, rows become keyboard-operable native `details` accordions.
-- IMDb links win when present; otherwise Profile opens the existing slug route.
+- IMDb links win when present; otherwise Professional Website is used. Older records without either value fall back to the existing slug route.
 
 ### Framer limitations and rollback
 

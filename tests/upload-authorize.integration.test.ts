@@ -125,10 +125,49 @@ describe("upload authorization endpoint", () => {
     });
   });
 
+  it("accepts a professional website when IMDb is absent", async () => {
+    const { created, dependencies } = setup();
+    const payload = body();
+    const response = await postUploadAuthorize(
+      request(
+        created.cookie,
+        created.csrfToken,
+        body({
+          project: {
+            ...(payload.project as object),
+            imdbUrl: undefined,
+            websiteUrl: "https://portfolio.example.com/writer",
+          },
+        }),
+      ),
+      dependencies,
+    );
+    expect(response.status).toBe(200);
+    const responseBody = (await response.json()) as { uploadToken: string };
+    expect(
+      dependencies.uploadTokens.verify(responseBody.uploadToken, created.session),
+    ).toMatchObject({ websiteUrl: "https://portfolio.example.com/writer" });
+  });
+
+  it("rejects a submission without IMDb or a professional website", async () => {
+    const { created, dependencies } = setup();
+    const payload = body();
+    const response = await postUploadAuthorize(
+      request(
+        created.cookie,
+        created.csrfToken,
+        body({ project: { ...(payload.project as object), imdbUrl: undefined } }),
+      ),
+      dependencies,
+    );
+    expect(response.status).toBe(400);
+  });
+
   it.each([
     ["invalid email", { email: "not-an-email" }],
     ["non-IMDb URL", { imdbUrl: "https://example.com/name/nm1234567/" }],
     ["IMDb title URL", { imdbUrl: "https://www.imdb.com/title/tt1234567/" }],
+    ["insecure professional website", { websiteUrl: "http://portfolio.example.com/" }],
   ])("rejects %s before issuing an upload token", async (_label, projectOverrides) => {
     const { created, dependencies } = setup();
     const response = await postUploadAuthorize(

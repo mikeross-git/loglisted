@@ -34,6 +34,17 @@ function imdbValue(value: unknown): string | null {
   }
 }
 
+function websiteValue(value: unknown): string | null {
+  const candidate = textValue(value);
+  if (!candidate) return null;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export class FramerRankingsReader {
   private cached: { expiresAt: number; value: PublicRankingsResponse } | undefined;
 
@@ -146,6 +157,7 @@ export class FramerRankingsReader {
                 ? genreCategoryLabel
                 : (enumNames.get(genreRaw) ?? genreRaw),
             imdbUrl: imdbValue(value(map.imdb)),
+            websiteUrl: websiteValue(value(map.website)),
             scores,
             updatedAt: item.updatedAt ?? null,
           };

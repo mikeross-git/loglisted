@@ -14,7 +14,7 @@ export const publicErrorMessages = Object.freeze({
   processing: "Your script is currently being processed…",
   authorizationExpired: "Your upload authorization expired. Please try again.",
   unreadable: "This PDF does not appear to contain readable screenplay text.",
-  documentLimit: "This document exceeds the current file or page limit.",
+  documentLimit: "The PDF must be between 25 and 150 pages and can be no larger than 15 MB.",
   capacity: "We're currently at processing capacity. Please try again later.",
   analysis: "We couldn't complete the analysis. Please try again later.",
 });
@@ -107,6 +107,9 @@ export class ScreenplayApiClient {
             lastName: input.project.lastName.trim(),
             email: input.project.email.trim().toLowerCase(),
             ...(input.project.imdbUrl.trim() ? { imdbUrl: input.project.imdbUrl.trim() } : {}),
+            ...(input.project.websiteUrl.trim()
+              ? { websiteUrl: input.project.websiteUrl.trim() }
+              : {}),
             projectTitle: input.project.projectTitle,
             format: input.project.format,
             primaryGenre: input.project.primaryGenre,

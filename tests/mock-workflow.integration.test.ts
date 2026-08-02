@@ -115,6 +115,7 @@ describe("full mock upload-to-result workflow", () => {
           fileName: "mock-feature.pdf",
           mimeType: "application/pdf",
           project: {
+            websiteUrl: "https://mock-writer.example.com/",
             projectTitle: "Mock Feature",
             format: "feature",
             primaryGenre: "Science Fiction",

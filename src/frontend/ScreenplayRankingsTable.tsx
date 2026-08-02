@@ -20,6 +20,21 @@ const scoreLabels: Record<RankingScoreKey, string> = {
   marketability: "Marketability",
   craft: "Craft",
 };
+
+export const scoreDescriptions: Record<RankingScoreKey, string> = {
+  overall: "The arithmetic mean of all ten screenplay category scores.",
+  premise: "Originality, clarity, hook, stakes, and commercial appeal.",
+  story: "Conflict, escalation, causality, emotional impact, and resolution.",
+  structure: "Opening, plot progression, turning points, climax, and scene flow.",
+  characters: "Protagonist, supporting characters, character arcs, motivation, and relationships.",
+  dialogue: "Naturalness, subtext, character voice, memorability, and efficiency.",
+  pacing: "Momentum, scene rhythm, narrative balance, tension management, and engagement.",
+  theme: "Novelty, clarity, integration, depth, and consistency of thematic ideas.",
+  tone: "Consistency, genre alignment, emotional authenticity, atmosphere, and relatability.",
+  marketability:
+    "Audience appeal, positioning, production feasibility, distinctiveness, and franchise potential.",
+  craft: "Formatting, grammar, visual storytelling, clarity of writing, and economy.",
+};
 const pageSizes = [25, 50, 100] as const;
 type Direction = "asc" | "desc";
 
@@ -64,6 +79,7 @@ const sampleRecords: PublicRankingRecord[] = [
     format: "Half-Hour TV Pilot",
     genre: "Fantasy",
     imdbUrl: "https://www.imdb.com/",
+    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 9.1,
@@ -88,6 +104,7 @@ const sampleRecords: PublicRankingRecord[] = [
     format: "Hour TV Pilot",
     genre: "Sci-Fi",
     imdbUrl: null,
+    websiteUrl: "https://example.com/rowan-calloway",
     updatedAt: null,
     scores: {
       overall: 9,
@@ -113,6 +130,7 @@ const sampleRecords: PublicRankingRecord[] = [
     format: "Feature",
     genre: "Dark Comedy",
     imdbUrl: null,
+    websiteUrl: null,
     updatedAt: null,
     scores: {
       overall: 8.9,
@@ -224,6 +242,7 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
   const format = item["format"];
   const genre = item["genre"];
   const imdbUrl = item["imdbUrl"];
+  const websiteUrl = item["websiteUrl"];
   const updatedAt = item["updatedAt"];
   if (
     typeof id !== "string" ||
@@ -234,6 +253,7 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
     typeof format !== "string" ||
     typeof genre !== "string" ||
     (imdbUrl !== null && typeof imdbUrl !== "string") ||
+    (websiteUrl !== null && typeof websiteUrl !== "string") ||
     (updatedAt !== null && typeof updatedAt !== "string")
   )
     return null;
@@ -246,6 +266,7 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
     format,
     genre,
     imdbUrl,
+    websiteUrl,
     updatedAt,
     scores,
   };
@@ -482,7 +503,28 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
                   <th className="loglisted-rankings__logline">Logline</th>
                   <th className="loglisted-rankings__format">Format</th>
                   <th className="loglisted-rankings__genre">Genre</th>
-                  <th className="loglisted-rankings__score">{scoreLabels[query.scoreKey]}</th>
+                  <th className="loglisted-rankings__score">
+                    <span className="loglisted-rankings__score-heading">
+                      {scoreLabels[query.scoreKey]}
+                      <span className="loglisted-rankings__tooltip">
+                        <button
+                          type="button"
+                          className="loglisted-rankings__tooltip-trigger"
+                          aria-label={`About the ${scoreLabels[query.scoreKey]} score`}
+                          aria-describedby={`score-description-${query.scoreKey}`}
+                        >
+                          ?
+                        </button>
+                        <span
+                          id={`score-description-${query.scoreKey}`}
+                          className="loglisted-rankings__tooltip-panel"
+                          role="tooltip"
+                        >
+                          {scoreDescriptions[query.scoreKey]}
+                        </span>
+                      </span>
+                    </span>
+                  </th>
                   <th className="loglisted-rankings__contact">Contact</th>
                 </tr>
               </thead>
@@ -534,14 +576,17 @@ function profileHref(prefix: string, slug: string): string {
 }
 function Contact({ record, prefix }: { record: PublicRankingRecord; prefix: string }) {
   const imdb = record.imdbUrl;
+  const website = record.websiteUrl;
+  const href = imdb ?? website ?? profileHref(prefix, record.slug);
+  const label = imdb ? "IMDb" : website ? "Website" : "Profile";
   return (
     <a
-      href={imdb ?? profileHref(prefix, record.slug)}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label={imdb ? `Open ${record.writerName} on IMDb` : `Open ${record.writerName} profile`}
+      aria-label={`Open ${record.writerName} ${label.toLowerCase()}`}
     >
-      {imdb ? "IMDb" : "Profile"}
+      {label}
     </a>
   );
 }
@@ -558,10 +603,23 @@ function DesktopRow({
     <tr>
       <td>{record.writerName}</td>
       <td>{record.scriptTitle}</td>
-      <td>
-        <span className="loglisted-rankings__truncate" title={record.logline}>
+      <td className="loglisted-rankings__logline-cell">
+        <span
+          className="loglisted-rankings__truncate"
+          tabIndex={record.logline ? 0 : undefined}
+          aria-describedby={record.logline ? `logline-preview-${safeDomId(record.id)}` : undefined}
+        >
           {record.logline || "—"}
         </span>
+        {record.logline ? (
+          <span
+            id={`logline-preview-${safeDomId(record.id)}`}
+            className="loglisted-rankings__logline-preview"
+            role="tooltip"
+          >
+            {record.logline}
+          </span>
+        ) : null}
       </td>
       <td>{record.format || "—"}</td>
       <td>{record.genre || "—"}</td>
@@ -582,8 +640,8 @@ function MobileRow({
   profilePathPrefix: string;
 }) {
   return (
-    <details>
-      <summary>
+    <article className="loglisted-rankings__mobile-card">
+      <header className="loglisted-rankings__mobile-header">
         <span className="loglisted-rankings__mobile-title">{record.scriptTitle}</span>
         <span className="loglisted-rankings__mobile-writer">{record.writerName}</span>
         <span
@@ -592,9 +650,11 @@ function MobileRow({
         >
           {formatScore(record.scores[scoreKey])}
         </span>
-      </summary>
+      </header>
       <div className="loglisted-rankings__mobile-body">
-        <p>{record.logline || "No logline available."}</p>
+        <p className="loglisted-rankings__mobile-logline">
+          {record.logline || "No logline available."}
+        </p>
         <dl>
           <dt>Format</dt>
           <dd>{record.format || "—"}</dd>
@@ -610,8 +670,12 @@ function MobileRow({
           </dd>
         </dl>
       </div>
-    </details>
+    </article>
   );
+}
+
+function safeDomId(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
 }
 function Pagination({
   page,

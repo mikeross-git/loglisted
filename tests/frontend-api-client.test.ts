@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 describe("frontend upload authorization payload", () => {
-  it("captures contact fields and omits a blank optional IMDb URL", async () => {
+  it("captures a professional website and omits a blank IMDb URL", async () => {
     const requests: Request[] = [];
     vi.stubGlobal(
       "fetch",
@@ -40,6 +40,7 @@ describe("frontend upload authorization payload", () => {
         lastName: " Writer ",
         email: " TAYLOR@EXAMPLE.COM ",
         imdbUrl: "",
+        websiteUrl: " https://portfolio.example.com/taylor ",
         projectTitle: "Project",
         format: "feature",
         primaryGenre: "drama",
@@ -64,6 +65,7 @@ describe("frontend upload authorization payload", () => {
       firstName: "Taylor",
       lastName: "Writer",
       email: "taylor@example.com",
+      websiteUrl: "https://portfolio.example.com/taylor",
     });
     expect(payload.project).not.toHaveProperty("imdbUrl");
   });

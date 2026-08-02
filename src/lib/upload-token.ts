@@ -1,6 +1,11 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { ImdbProfileUrlSchema, WriterEmailSchema, WriterNameSchema } from "../types/project.js";
+import {
+  ImdbProfileUrlSchema,
+  ProfessionalWebsiteUrlSchema,
+  WriterEmailSchema,
+  WriterNameSchema,
+} from "../types/project.js";
 import type { AnonymousSession } from "./anonymous-session.js";
 import { AuthorizationError, ValidationError } from "./errors.js";
 import type { AbuseStore } from "./storage/abuse-store.js";
@@ -17,6 +22,7 @@ export const UploadTokenClaimsSchema = z
     lastName: WriterNameSchema.optional(),
     email: WriterEmailSchema.optional(),
     imdbUrl: ImdbProfileUrlSchema.optional(),
+    websiteUrl: ProfessionalWebsiteUrlSchema.optional(),
     projectTitle: z.string().min(1).max(200),
     logline: z.string().max(1000).optional(),
     declaredFormat: z.enum(["feature", "halfHourPilot", "hourPilot", "unknown"]),

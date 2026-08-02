@@ -216,6 +216,7 @@ export async function analyzeScreenplay(
                   lastName: claims.lastName,
                   email: claims.email,
                   ...(claims.imdbUrl ? { imdbUrl: claims.imdbUrl } : {}),
+                  ...(claims.websiteUrl ? { websiteUrl: claims.websiteUrl } : {}),
                 },
               }
             : {}),
@@ -262,6 +263,7 @@ export async function analyzeScreenplay(
                 lastName: claims.lastName,
                 email: claims.email,
                 ...(claims.imdbUrl ? { imdbUrl: claims.imdbUrl } : {}),
+                ...(claims.websiteUrl ? { websiteUrl: claims.websiteUrl } : {}),
               },
             }
           : { submissionContact: undefined }),

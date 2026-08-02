@@ -53,6 +53,7 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   genreCategory: "Genre Category",
   genreDropdown: "Genre Dropdown",
   imdb: "IMDB",
+  website: "Professional Website",
   format: "Format",
 });
 
@@ -252,6 +253,7 @@ export function buildFramerCmsItem(
   const isTest = result.internal.evaluationMode === "mock";
   const logline = result.internal.submissionLogline?.trim();
   const imdbUrl = contact.imdbUrl?.trim();
+  const websiteUrl = contact.websiteUrl?.trim();
   const values: Record<FramerFieldKey, string | number | boolean | undefined> = {
     writerName,
     email: contact.email,
@@ -272,6 +274,7 @@ export function buildFramerCmsItem(
     genreCategory: referenceValues.genreCategory ?? result.declaredGenre.trim(),
     genreDropdown: result.declaredGenre.trim(),
     imdb: imdbUrl === "" ? undefined : imdbUrl,
+    website: websiteUrl === "" ? undefined : websiteUrl,
     format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
   };
   const fieldData: FieldDataInput = {};
