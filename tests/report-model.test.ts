@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { mapAnalysisProgress } from "../src/frontend/report/AnalysisProgress.js";
 import {
+  ANALYSIS_PROGRESS_ESTIMATE_MILLISECONDS,
   MOCK_ANALYSIS_MINIMUM_MILLISECONDS,
   remainingMockAnalysisDelay,
 } from "../src/frontend/report/analysis-timing.js";
@@ -108,7 +109,10 @@ describe("analysis progress and report rendering", () => {
   });
 
   it("advances through all categories and finishes at 100 percent", () => {
-    const midpoint = mapAnalysisProgress("processing", 4_500);
+    const midpoint = mapAnalysisProgress(
+      "processing",
+      ANALYSIS_PROGRESS_ESTIMATE_MILLISECONDS / 2,
+    );
     expect(midpoint.items).toHaveLength(10);
     expect(midpoint.items.filter((item) => item.state === "complete")).toHaveLength(5);
     expect(midpoint.items.filter((item) => item.state === "active")).toHaveLength(1);

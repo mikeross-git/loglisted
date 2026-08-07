@@ -1,5 +1,10 @@
 export const MOCK_ANALYSIS_MINIMUM_MILLISECONDS = 10_000;
-export const MOCK_ANALYSIS_COMPLETION_HOLD_MILLISECONDS = 750;
+export const MOCK_ANALYSIS_COMPLETION_HOLD_MILLISECONDS = 1_500;
+
+// Category-level backend progress is not currently available, so the loader uses a
+// deliberately conservative estimate that matches the observed one-to-two-minute
+// production runtime. The real response always takes precedence over this estimate.
+export const ANALYSIS_PROGRESS_ESTIMATE_MILLISECONDS = 110_000;
 
 export function remainingMockAnalysisDelay(
   startedAt: number,

@@ -122,6 +122,12 @@
   letter-spacing: 0.03em;
 }
 
+.loglisted-uploader .loglisted-analysis-progress__category-label {
+  display: block;
+  min-width: 0;
+  line-height: 1.25;
+}
+
 .loglisted-uploader .loglisted-analysis-progress__visual {
   position: relative;
   display: grid;

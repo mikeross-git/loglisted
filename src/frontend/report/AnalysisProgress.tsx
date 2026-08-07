@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { UploaderPhase } from "../types.js";
+import { ANALYSIS_PROGRESS_ESTIMATE_MILLISECONDS } from "./analysis-timing.js";
 import { categoryDefinitions } from "./report-model.js";
 
 export type EvaluationState = "queued" | "active" | "complete" | "failed";
@@ -28,7 +29,10 @@ export function mapAnalysisProgress(
       })),
     };
   }
-  const elapsedRatio = Math.min(1, Math.max(0, elapsedMilliseconds) / 9_000);
+  const elapsedRatio = Math.min(
+    1,
+    Math.max(0, elapsedMilliseconds) / ANALYSIS_PROGRESS_ESTIMATE_MILLISECONDS,
+  );
   const percentage = Math.min(95, Math.round(5 + elapsedRatio * 90));
   const activeIndex = Math.min(9, Math.floor((percentage - 5) / 9));
   const items = categoryDefinitions.map(({ label }, index) => ({
@@ -97,7 +101,11 @@ export function AnalysisProgress({
               key={item.label}
             >
               <span className="loglisted-analysis-progress__marker" aria-hidden="true" />
-              <span>{item.label}</span>
+              <span className="loglisted-analysis-progress__category-label">
+                Analyzing
+                <br />
+                {item.label.replace(/^Analyzing\s+/, "")}
+              </span>
               <small>
                 {item.state === "active"
                   ? "In progress"
@@ -132,7 +140,17 @@ export function AnalysisProgress({
           >
             <strong>{progress.percentage}%</strong>
             <span>{completed ? "Complete" : "Estimated"}</span>
-            <small>{progress.currentLabel}</small>
+            <small>
+              {completed ? (
+                progress.currentLabel
+              ) : (
+                <>
+                  Analyzing
+                  <br />
+                  {progress.currentLabel.replace(/^Analyzing\s+/, "")}
+                </>
+              )}
+            </small>
           </div>
         </div>
       </div>
