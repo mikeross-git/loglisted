@@ -198,6 +198,8 @@ export async function analyzeScreenplay(
         maximumOutputTokens: dependencies.scoringOutputTokens ?? 350,
         timeoutMs: dependencies.timeoutMs ?? 45_000,
         fileHash: claims.fileHash,
+        declaredFormat: claims.declaredFormat,
+        declaredGenre: claims.primaryGenre,
         ...(dependencies.scoringReasoningEffort
           ? { reasoningEffort: dependencies.scoringReasoningEffort }
           : {}),

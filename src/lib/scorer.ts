@@ -76,7 +76,18 @@ export interface ScoreScreenplayOptions {
   summaryModel?: string;
   fileHash?: string;
   reasoningEffort?: OpenAiReasoningEffort;
+  declaredFormat: string;
+  declaredGenre: string;
 }
+
+const DeclaredScoringContextSchema = z
+  .object({
+    declaredFormat: z.string().trim().min(1).max(50),
+    declaredGenre: z.string().trim().min(1).max(100),
+  })
+  .strict();
+
+export type DeclaredScoringContext = z.infer<typeof DeclaredScoringContextSchema>;
 
 export function calculateOverallScore(scores: FinalModelScore["categoryScores"]): number {
   const values = Object.values(scores);
@@ -91,8 +102,10 @@ export function buildScoringPayload(
   representationInput: ReducedScreenplay,
   metadataInput: ObjectiveMetadata,
   excerptsInput: readonly RepresentativeExcerpt[],
+  declaredContextInput: DeclaredScoringContext,
 ): unknown {
   return {
+    declaredProject: DeclaredScoringContextSchema.parse(declaredContextInput),
     compressedScreenplay: ReducedScreenplaySchema.parse(representationInput),
     deterministicMetadata: ObjectiveMetadataSchema.parse(metadataInput),
     representativeExcerpts: z.array(RepresentativeExcerptSchema).parse(excerptsInput),
@@ -107,7 +120,10 @@ export async function scoreScreenplay(
   excerpts: readonly RepresentativeExcerpt[],
   options: ScoreScreenplayOptions,
 ): Promise<FinalScoreResult> {
-  const payload = buildScoringPayload(representation, metadata, excerpts);
+  const payload = buildScoringPayload(representation, metadata, excerpts, {
+    declaredFormat: options.declaredFormat,
+    declaredGenre: options.declaredGenre,
+  });
   assertMinimizedLlmPayload(payload);
   const estimatedInputTokens = estimateTokens(
     `${FINAL_SCORING_SYSTEM_PROMPT}\n${JSON.stringify(payload)}`,

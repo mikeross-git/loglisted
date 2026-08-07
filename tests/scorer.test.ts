@@ -48,6 +48,8 @@ function options(provider: FakeLlmProvider) {
     maximumInputTokens: 12_000,
     maximumOutputTokens: 350,
     timeoutMs: 1_000,
+    declaredFormat: "feature",
+    declaredGenre: "Comedy",
   };
 }
 
@@ -95,7 +97,10 @@ describe("final screenplay scorer", () => {
   });
 
   it("builds a prompt payload that excludes risk and identity metadata", () => {
-    const payload = buildScoringPayload(representation, objectiveMetadata, []);
+    const payload = buildScoringPayload(representation, objectiveMetadata, [], {
+      declaredFormat: "feature",
+      declaredGenre: "Comedy",
+    });
     const keys: string[] = [];
     const visit = (value: unknown): void => {
       if (Array.isArray(value)) {
@@ -108,6 +113,12 @@ describe("final screenplay scorer", () => {
       }
     };
     visit(payload);
+    expect(payload).toMatchObject({
+      declaredProject: {
+        declaredFormat: "feature",
+        declaredGenre: "Comedy",
+      },
+    });
     expect(keys).not.toContain("riskscore");
     expect(keys).not.toContain("writeridentity");
     expect(keys).not.toContain("ipaddress");
@@ -115,5 +126,22 @@ describe("final screenplay scorer", () => {
     expect(keys).not.toContain("deviceid");
     expect(keys).not.toContain("uploadhistory");
     expect(keys).not.toContain("previousexternalscores");
+    expect(keys).not.toContain("writeremail");
+    expect(keys).not.toContain("imdbprofile");
+  });
+
+  it("passes only validated declared format and genre context to final scoring", async () => {
+    const provider = new FakeLlmProvider(() => ({ categoryScores, confidence: 0.8 }));
+    await scoreScreenplay(representation, objectiveMetadata, [], options(provider));
+
+    expect(provider.requests).toHaveLength(1);
+    expect(provider.requests[0]?.userPayload).toMatchObject({
+      declaredProject: {
+        declaredFormat: "feature",
+        declaredGenre: "Comedy",
+      },
+    });
+    expect(JSON.stringify(provider.requests[0]?.userPayload)).not.toContain("riskScore");
+    expect(JSON.stringify(provider.requests[0]?.userPayload)).not.toContain("writerEmail");
   });
 });
