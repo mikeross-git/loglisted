@@ -24,6 +24,7 @@ describe("configuration", () => {
     expect(config.MAX_PDF_PAGES).toBe(150);
     expect(config.MIN_PDF_PAGES).toBe(25);
     expect(config.CORS_ALLOWED_ORIGINS).toHaveLength(2);
+    expect(config.OPENAI_REASONING_EFFORT).toBeUndefined();
   });
 
   it("rejects short secrets and malformed origins", () => {

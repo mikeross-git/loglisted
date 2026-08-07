@@ -135,7 +135,9 @@ export class OpenAiProvider implements LlmProvider {
             model: request.model,
             instructions: request.systemPrompt,
             input: JSON.stringify(request.userPayload),
-            temperature: request.temperature,
+            ...(request.reasoningEffort
+              ? { reasoning: { effort: request.reasoningEffort } }
+              : { temperature: request.temperature }),
             max_output_tokens: request.maximumOutputTokens,
             store: false,
             text: {

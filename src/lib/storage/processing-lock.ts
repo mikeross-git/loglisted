@@ -8,6 +8,7 @@ export const ScoringConfigurationSchema = z
   .object({
     summaryModel: z.string().min(1),
     scoringModel: z.string().min(1),
+    scoringReasoningEffort: z.enum(["none", "low", "medium", "high", "xhigh"]).optional(),
     verificationModel: z.string().min(1).optional(),
     adjudicatorModel: z.string().min(1).optional(),
     parserVersion: z.string().min(1).default(versions.parserVersion),

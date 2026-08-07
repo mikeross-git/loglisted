@@ -3,6 +3,8 @@ import { LlmFailureError } from "../errors.js";
 import type { TokenUsage } from "../cost.js";
 import type { ProviderPrivacyCapabilities } from "./provider-capabilities.js";
 
+export type OpenAiReasoningEffort = "none" | "low" | "medium" | "high" | "xhigh";
+
 export interface StructuredOutputRequest<T> {
   model: string;
   systemPrompt: string;
@@ -12,6 +14,7 @@ export interface StructuredOutputRequest<T> {
   maximumOutputTokens: number;
   timeoutMs: number;
   temperature: 0;
+  reasoningEffort?: OpenAiReasoningEffort;
   seed?: number;
   context?: {
     fileHash?: string;

@@ -5,7 +5,7 @@ import type { ScriptBudget } from "./budget.js";
 import { VersionedSummaryCache, type CacheKeyContext, type VersionedCache } from "./cache.js";
 import { ScreenplayChunkSchema, chunkScreenplay } from "./chunker.js";
 import { RepresentativeExcerptSchema, sampleRepresentativeExcerpts } from "./excerpt-sampler.js";
-import type { LlmProvider } from "./llm/provider.js";
+import type { LlmProvider, OpenAiReasoningEffort } from "./llm/provider.js";
 import type { ModelPricingConfig } from "./model-pricing.js";
 import { parseScreenplay } from "./parser.js";
 import { assertScreenplayContent } from "./screenplay-content-validation.js";
@@ -50,6 +50,7 @@ export interface AnalyzePipelineDependencies {
   summaryOutputTokens?: number;
   scoringInputTokens?: number;
   scoringOutputTokens?: number;
+  scoringReasoningEffort?: OpenAiReasoningEffort;
   timeoutMs?: number;
   resultTtlSeconds?: number;
   pdfExtractionOptions?: PdfExtractionOptions;
@@ -85,6 +86,9 @@ export async function analyzeScreenplay(
   const scoringConfiguration: ScoringConfiguration = {
     summaryModel: dependencies.summaryModel,
     scoringModel: dependencies.scoringModel,
+    ...(dependencies.scoringReasoningEffort
+      ? { scoringReasoningEffort: dependencies.scoringReasoningEffort }
+      : {}),
   };
   const lockResult = await dependencies.processingLock.run(
     claims.fileHash,
@@ -94,6 +98,9 @@ export async function analyzeScreenplay(
         fileHash: claims.fileHash,
         summaryModel: dependencies.summaryModel,
         scoringModel: dependencies.scoringModel,
+        ...(dependencies.scoringReasoningEffort
+          ? { scoringReasoningEffort: dependencies.scoringReasoningEffort }
+          : {}),
       };
       dependencies.onProcessingStage?.("pdf_extraction");
       const pdf = PdfResultSchema.parse(
@@ -191,6 +198,9 @@ export async function analyzeScreenplay(
         maximumOutputTokens: dependencies.scoringOutputTokens ?? 350,
         timeoutMs: dependencies.timeoutMs ?? 45_000,
         fileHash: claims.fileHash,
+        ...(dependencies.scoringReasoningEffort
+          ? { reasoningEffort: dependencies.scoringReasoningEffort }
+          : {}),
       });
       const result: StoredResult = {
         resultId: randomUUID(),

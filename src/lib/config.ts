@@ -132,6 +132,10 @@ export const ConfigSchema = z
     SCORING_MODEL: optionalSecret,
     VERIFICATION_MODEL: optionalSecret,
     ADJUDICATOR_MODEL: optionalSecret,
+    OPENAI_REASONING_EFFORT: z.preprocess(
+      emptyToUndefined,
+      z.enum(["none", "low", "medium", "high", "xhigh"]).optional(),
+    ),
     MODEL_PRICING_JSON: z.string().default('{"models":{}}'),
     DRY_RUN: booleanFromEnvironment.default(false),
     LLM_TIMEOUT_MS: z.coerce.number().int().positive().default(45_000),

@@ -353,6 +353,9 @@ export function createProductionApp(
     summaryOutputTokens: validated.MAX_CHUNK_SUMMARY_OUTPUT_TOKENS,
     scoringInputTokens: validated.MAX_SCORING_INPUT_TOKENS,
     scoringOutputTokens: validated.MAX_SCORING_OUTPUT_TOKENS,
+    ...(validated.OPENAI_REASONING_EFFORT
+      ? { scoringReasoningEffort: validated.OPENAI_REASONING_EFFORT }
+      : {}),
     representativeExcerptTokenBudget: validated.REPRESENTATIVE_EXCERPT_TOKEN_BUDGET,
     timeoutMs: validated.LLM_TIMEOUT_MS,
     resultTtlSeconds: validated.RESULT_TTL_SECONDS,

@@ -97,6 +97,46 @@ describe("LLM provider abstraction", () => {
     expect(requestBody).not.toHaveProperty("seed");
   });
 
+  it("uses reasoning effort and omits temperature for reasoning-model requests", async () => {
+    let requestBody: Record<string, unknown> = {};
+    const provider = new OpenAiProvider({
+      apiKey: "test-key",
+      fetchImplementation: (_url, init) => {
+        if (typeof init?.body !== "string") throw new Error("Expected a JSON request body.");
+        requestBody = JSON.parse(init.body) as Record<string, unknown>;
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "resp_terra",
+              output: [
+                {
+                  type: "message",
+                  content: [{ type: "output_text", text: JSON.stringify({ result: "ok" }) }],
+                },
+              ],
+              usage: { input_tokens: 10, output_tokens: 2 },
+            }),
+            { status: 200 },
+          ),
+        );
+      },
+    });
+
+    await provider.generateStructured({
+      ...request,
+      model: "gpt-5.6-terra",
+      reasoningEffort: "none",
+    });
+
+    expect(requestBody).toMatchObject({
+      model: "gpt-5.6-terra",
+      reasoning: { effort: "none" },
+      store: false,
+    });
+    expect(requestBody).not.toHaveProperty("temperature");
+    expect(requestBody).not.toHaveProperty("seed");
+  });
+
   it("normalizes only safe provider error metadata", async () => {
     const provider = new OpenAiProvider({
       apiKey: "test-key",

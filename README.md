@@ -500,6 +500,12 @@ LLM request. This is a request-storage control, not a promise of zero retention 
 training prohibition. Account settings, provider terms, contractual retention controls, and any
 approved zero-data-retention arrangement must still be reviewed independently.
 
+For scoring models that use configurable reasoning, set `OPENAI_REASONING_EFFORT` to one of
+`none`, `low`, `medium`, `high`, or `xhigh`. When it is set, the OpenAI adapter sends the Responses
+API `reasoning.effort` option and deliberately omits `temperature`. Leave the variable blank for
+models that use deterministic `temperature: 0` instead. The reasoning setting is included in final
+score cache keys and processing-lock fingerprints so experiments cannot reuse incompatible scores.
+
 ## Prepare the canary without calling the provider
 
 1. Keep the existing `loglisted-staging-api` service unchanged.

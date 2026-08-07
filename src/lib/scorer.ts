@@ -5,7 +5,7 @@ import { estimateTokens } from "./chunker.js";
 import { calculateCost, calculateProjectedCost } from "./cost.js";
 import type { CostBreakdown, TokenUsage } from "./cost.js";
 import { RepresentativeExcerptSchema, type RepresentativeExcerpt } from "./excerpt-sampler.js";
-import type { LlmProvider } from "./llm/provider.js";
+import type { LlmProvider, OpenAiReasoningEffort } from "./llm/provider.js";
 import { LlmFailureError } from "./errors.js";
 import type { ModelPricingConfig } from "./model-pricing.js";
 import { FINAL_SCORING_SYSTEM_PROMPT } from "./prompts/final-scoring.js";
@@ -75,6 +75,7 @@ export interface ScoreScreenplayOptions {
   minimumConfidence?: number;
   summaryModel?: string;
   fileHash?: string;
+  reasoningEffort?: OpenAiReasoningEffort;
 }
 
 export function calculateOverallScore(scores: FinalModelScore["categoryScores"]): number {
@@ -132,6 +133,7 @@ export async function scoreScreenplay(
       timeoutMs: options.timeoutMs,
       temperature: 0,
       seed: 1,
+      ...(options.reasoningEffort ? { reasoningEffort: options.reasoningEffort } : {}),
       ...(options.fileHash ? { context: { fileHash: options.fileHash } } : {}),
     });
     const cost = calculateCost(options.pricing, options.model, response.usage);
