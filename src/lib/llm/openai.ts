@@ -123,7 +123,6 @@ export class OpenAiProvider implements LlmProvider {
             instructions: request.systemPrompt,
             input: JSON.stringify(request.userPayload),
             temperature: request.temperature,
-            seed: request.seed,
             max_output_tokens: request.maximumOutputTokens,
             store: false,
             text: {

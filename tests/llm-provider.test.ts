@@ -62,6 +62,41 @@ describe("LLM provider abstraction", () => {
     expect(called).toBe(false);
   });
 
+  it("omits unsupported seed while retaining request-storage controls", async () => {
+    let requestBody: unknown;
+    const provider = new OpenAiProvider({
+      apiKey: "test-key",
+      fetchImplementation: (_url, init) => {
+        if (typeof init?.body !== "string") throw new Error("Expected a JSON request body.");
+        requestBody = JSON.parse(init.body);
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "resp_safe",
+              output: [
+                {
+                  type: "message",
+                  content: [{ type: "output_text", text: JSON.stringify({ result: "ok" }) }],
+                },
+              ],
+              usage: { input_tokens: 10, output_tokens: 2 },
+            }),
+            { status: 200 },
+          ),
+        );
+      },
+    });
+
+    await provider.generateStructured(request);
+
+    expect(requestBody).toMatchObject({
+      model: "configurable-model",
+      temperature: 0,
+      store: false,
+    });
+    expect(requestBody).not.toHaveProperty("seed");
+  });
+
   it("normalizes only safe provider error metadata", async () => {
     const provider = new OpenAiProvider({
       apiKey: "test-key",
