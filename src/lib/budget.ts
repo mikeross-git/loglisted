@@ -40,10 +40,12 @@ export class ScriptBudget {
     private readonly globalStore?: AtomicSpendStore,
     private readonly globalLimits?: SpendLimits,
     private readonly dryRun = false,
+    private readonly analysisAlreadyAdmitted = false,
   ) {}
 
   private ensureAnalysisAdmission(now: Date): Promise<void> {
-    if (this.dryRun || !this.globalStore || !this.globalLimits) return Promise.resolve();
+    if (this.dryRun || this.analysisAlreadyAdmitted || !this.globalStore || !this.globalLimits)
+      return Promise.resolve();
     this.analysisAdmission ??= this.globalStore
       .beginAnalysis(now, this.globalLimits)
       .then(() => undefined);

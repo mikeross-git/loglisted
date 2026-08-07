@@ -1,0 +1,48 @@
+# Optional, separate Render Blueprint for a live-provider canary.
+# Do not sync this over the existing staging Blueprint. Create a distinct service.
+services:
+  - type: web
+    name: loglisted-live-canary-api
+    runtime: node
+    plan: starter
+    autoDeploy: false
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start:production
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: APP_ENV
+        value: production
+      - key: SCREENPLAY_SCORING_MODE
+        value: production
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: LLM_PROVIDER
+        value: openai
+      - key: AI_PROVIDER
+        value: openai
+      - key: DRY_RUN
+        value: "false"
+      - key: ALLOW_MOCK_IN_PRODUCTION
+        value: "false"
+      - key: STORAGE_DRIVER
+        value: redis
+      - key: RAW_PDF_PERSISTENCE_ENABLED
+        value: "false"
+      - key: RAW_TEXT_PERSISTENCE_ENABLED
+        value: "false"
+      - key: REDACT_TITLE_PAGE_PII
+        value: "true"
+      - key: ALLOW_LLM_CONTENT_IN_OBSERVABILITY
+        value: "false"
+      - key: ALLOW_SCRIPT_CONTENT_IN_ERROR_REPORTS
+        value: "false"
+      - key: ALLOW_REQUEST_BODY_LOGGING
+        value: "false"
+      - key: FRAMER_CMS_SYNC_ENABLED
+        value: "false"
+      - key: FRAMER_RANKINGS_ENABLED
+        value: "false"

@@ -13,6 +13,7 @@
     "dev:staging": "tsx watch staging-server.ts",
     "start:backend": "node dist/dev-server.js",
     "start:staging": "node dist/staging-server.js",
+    "start:production": "node dist/production-server.js",
     "preview": "vite preview",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",

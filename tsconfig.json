@@ -26,6 +26,7 @@
     "src/**/*.tsx",
     "dev-server.ts",
     "staging-server.ts",
+    "production-server.ts",
     "tests/**/*.ts",
     "fixtures/**/*.ts",
     "vitest.config.ts",

@@ -470,3 +470,81 @@ collections, move query and pagination parameters server-side.
 Rollback is non-destructive: remove or hide the Code Component instance and reveal the untouched
 native CMS table. To disable only the JSON reader, set `FRAMER_RANKINGS_ENABLED=false` and redeploy
 the backend. This does not disable CMS result synchronization and does not modify CMS records.
+
+# Production Live-Canary Backend (Not Yet Deployed)
+
+The repository includes a separate, fail-closed executable for a small live-provider canary. It
+reuses the existing upload, security, parsing, summarization, scoring, result, and deletion APIs;
+it does not replace the local mock server or public mock-staging server.
+
+The three modes are intentionally separate:
+
+- Local mock: `npm run dev`
+- Public mock staging: `npm run start:staging`
+- Live-provider canary/production executable: `npm run start:production`
+
+The live executable refuses to start unless all of these invariants hold:
+
+- `APP_ENV=production`, `NODE_ENV=production`, and `SCREENPLAY_SCORING_MODE=production`
+- `LLM_PROVIDER=openai` and `AI_PROVIDER=openai`
+- `DRY_RUN=false` and `ALLOW_MOCK_IN_PRODUCTION=false`
+- `STORAGE_DRIVER=redis`, with Upstash REST credentials and a cache-encryption key
+- current pricing exists for every configured active model
+- provider training opt-out has been confirmed by the operator
+- the provider privacy review date and terms URL are present
+- request-level storage support is explicitly confirmed and request storage is disabled
+- PDF/raw-text persistence and all content observability switches remain disabled
+
+The provider adapter applies the documented Responses API request option `store: false` on every
+LLM request. This is a request-storage control, not a promise of zero retention or a prompt-based
+training prohibition. Account settings, provider terms, contractual retention controls, and any
+approved zero-data-retention arrangement must still be reviewed independently.
+
+## Prepare the canary without calling the provider
+
+1. Keep the existing `loglisted-staging-api` service unchanged.
+2. Copy `.env.canary.example` into a private password manager or the environment editor of a new,
+   separate Render service. Do not commit a populated environment file.
+3. Replace every blank secret and placeholder model name. Generate independent signing secrets for
+   this service; do not reuse staging values.
+4. Replace the zero prices in `MODEL_PRICING_JSON` with current prices from authoritative provider
+   documentation. The keys must exactly match all configured model names.
+5. Verify the provider project/account training and data-sharing settings, current terms, retention,
+   request-storage behavior, and any regional or contractual controls. Only then set
+   `AI_PROVIDER_TRAINING_OPT_OUT_CONFIRMED=true` and record the review date/URLs.
+6. Configure the dedicated Upstash Redis database and a base64-encoded 32-byte
+   `CACHE_ENCRYPTION_KEY`.
+7. Configure a dedicated Turnstile widget/secret and exact hostname/action.
+8. Run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` locally.
+9. Optionally validate fail-closed startup with intentionally incomplete placeholder values. Do not
+   submit a screenplay and do not use a real provider key during this validation.
+
+`render.canary.yaml` is an optional Blueprint for a **new** service named
+`loglisted-live-canary-api`. Automatic deploys are disabled. Its secret values are deliberately
+absent. Do not apply that Blueprint to the current mock-staging service.
+
+Expected health output after a future operator-controlled deployment:
+
+```json
+{
+  "ok": true,
+  "environment": "production",
+  "scoringMode": "production",
+  "llmProvider": "openai",
+  "dryRun": false,
+  "framerCmsSyncEnabled": false,
+  "rankingsEnabled": false
+}
+```
+
+The health route performs no LLM call and exposes no secrets. A real provider request occurs only
+after a browser completes session creation, Turnstile-backed upload authorization, token/file
+binding validation, server-side PDF validation, quota checks, Redis-backed capacity admission, PII
+redaction, and the existing pipeline reaches an LLM stage.
+
+## Canary rollback
+
+Disable or suspend only the separate live-canary service, remove its Framer/API URL from any test
+page, and revoke its dedicated OpenAI key. The local and mock-staging commands and services remain
+unchanged. Do not point the production Framer uploader at the canary until an explicitly approved
+live test plan has passed.

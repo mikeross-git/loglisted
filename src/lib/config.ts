@@ -29,6 +29,8 @@ export const ConfigSchema = z
     SCREENPLAY_SCORING_MODE: z.enum(["mock", "production"]).default("production"),
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+    HOST: z.string().min(1).default("0.0.0.0"),
+    PORT: z.coerce.number().int().positive().default(10_000),
     PUBLIC_APP_ORIGIN: z.url(),
     API_ORIGIN: z.url(),
     CORS_ALLOWED_ORIGINS: z
@@ -165,7 +167,9 @@ export const ConfigSchema = z
     FRAMER_RANKINGS_ENABLED: booleanFromEnvironment.default(false),
     FRAMER_RANKINGS_CACHE_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(600),
   })
-  .strict()
+  // process.env contains host/platform variables that are unrelated to this app.
+  // Strip them rather than retaining unknown values (which could include secrets).
+  .strip()
   .superRefine((config, context) => {
     if (config.MIN_PDF_PAGES > config.MAX_PDF_PAGES) {
       context.addIssue({
