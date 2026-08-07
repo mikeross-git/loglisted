@@ -33,6 +33,7 @@ const allowedFieldNames = new Set([
   "providerRequestId",
   "providerCode",
   "providerParam",
+  "failureKind",
   "retryable",
   "processingStage",
   "errorClass",

@@ -54,6 +54,7 @@ export interface AnalyzeRejectionDiagnostic {
   providerRequestId?: string;
   providerCode?: string;
   providerParam?: string;
+  failureKind?: string;
   status: number;
 }
 
@@ -173,6 +174,10 @@ export async function postAnalyze(
       error instanceof AppError && typeof error.details?.["providerParam"] === "string"
         ? error.details["providerParam"]
         : undefined;
+    const failureKind =
+      error instanceof AppError && typeof error.details?.["failureKind"] === "string"
+        ? error.details["failureKind"]
+        : undefined;
     const status =
       reasonCode === "pdf_file_size_limit" ||
       reasonCode === "pdf_page_minimum" ||
@@ -191,6 +196,7 @@ export async function postAnalyze(
         ...(providerRequestId ? { providerRequestId } : {}),
         ...(providerCode ? { providerCode } : {}),
         ...(providerParam ? { providerParam } : {}),
+        ...(failureKind ? { failureKind } : {}),
         status,
       });
     } catch {

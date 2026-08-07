@@ -64,6 +64,10 @@ export function normalizeProviderError(provider: string, error: unknown): LlmFai
     typeof error === "object" && error !== null && "provider_param" in error
       ? String(error.provider_param)
       : undefined;
+  const failureKind =
+    typeof error === "object" && error !== null && "provider_failure_kind" in error
+      ? String(error.provider_failure_kind)
+      : undefined;
   const finiteStatus = typeof status === "number" && Number.isFinite(status) ? status : undefined;
   return new LlmFailureError(`${provider} structured-output request failed.`, {
     cause: error,
@@ -73,6 +77,7 @@ export function normalizeProviderError(provider: string, error: unknown): LlmFai
       ...(requestId ? { requestId } : {}),
       ...(providerCode ? { providerCode } : {}),
       ...(providerParam ? { providerParam } : {}),
+      ...(failureKind ? { failureKind } : {}),
     },
   });
 }

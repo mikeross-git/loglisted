@@ -54,6 +54,19 @@ function extractOutputText(response: z.infer<typeof OpenAiResponseSchema>): stri
   throw new Error("OpenAI response did not contain output text.");
 }
 
+type SafeProviderFailure = Error & {
+  request_id?: string;
+  provider_failure_kind?: string;
+};
+
+function safeFailure(error: unknown, kind: string, requestId?: string): SafeProviderFailure {
+  const failure: SafeProviderFailure =
+    error instanceof Error ? error : new Error("Provider request failed.");
+  failure.provider_failure_kind = kind;
+  if (requestId) failure.request_id = requestId;
+  return failure;
+}
+
 export class OpenAiProvider implements LlmProvider {
   readonly name = "openai";
   private readonly fetchImplementation: typeof fetch;
@@ -156,11 +169,34 @@ export class OpenAiProvider implements LlmProvider {
           }
           throw error;
         }
-        const body = OpenAiResponseSchema.parse(await response.json());
-        const decoded = JSON.parse(extractOutputText(body)) as unknown;
+        const requestId = response.headers.get("x-request-id") ?? undefined;
+        let body: z.infer<typeof OpenAiResponseSchema>;
+        try {
+          body = OpenAiResponseSchema.parse(await response.json());
+        } catch (error) {
+          throw safeFailure(error, "response_shape", requestId);
+        }
+        let outputText: string;
+        try {
+          outputText = extractOutputText(body);
+        } catch (error) {
+          throw safeFailure(error, "missing_output_text", requestId ?? body.id);
+        }
+        let decoded: unknown;
+        try {
+          decoded = JSON.parse(outputText) as unknown;
+        } catch (error) {
+          throw safeFailure(error, "malformed_output_json", requestId ?? body.id);
+        }
+        let output: T;
+        try {
+          output = request.schema.parse(decoded);
+        } catch (error) {
+          throw safeFailure(error, "structured_output_validation", requestId ?? body.id);
+        }
         return {
           model: request.model,
-          output: request.schema.parse(decoded),
+          output,
           usage: {
             inputTokens: body.usage?.input_tokens ?? 0,
             outputTokens: body.usage?.output_tokens ?? 0,
@@ -172,13 +208,19 @@ export class OpenAiProvider implements LlmProvider {
           dryRun: false,
         };
       } catch (error) {
-        lastError = error;
+        const classifiedError =
+          error instanceof DOMException && error.name === "AbortError"
+            ? safeFailure(error, "timeout")
+            : error instanceof TypeError
+              ? safeFailure(error, "network_error")
+              : error;
+        lastError = classifiedError;
         const malformedOutput =
-          error instanceof SyntaxError ||
-          error instanceof z.ZodError ||
-          (error instanceof Error && error.message.includes("output text"));
+          classifiedError instanceof SyntaxError ||
+          classifiedError instanceof z.ZodError ||
+          (classifiedError instanceof Error && classifiedError.message.includes("output text"));
         if (!malformedOutput || attempt === 2) {
-          throw normalizeProviderError(this.name, error);
+          throw normalizeProviderError(this.name, classifiedError);
         }
       } finally {
         clearTimeout(timeout);

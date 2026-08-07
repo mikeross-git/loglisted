@@ -14,6 +14,7 @@ describe("logging and observability privacy", () => {
       providerRequestId: "req_safe123",
       providerCode: "invalid_request_error",
       providerParam: "seed",
+      failureKind: "structured_output_validation",
       status: 502,
       environment: "production",
     });
@@ -24,6 +25,7 @@ describe("logging and observability privacy", () => {
       providerRequestId: "req_safe123",
       providerCode: "invalid_request_error",
       providerParam: "seed",
+      failureKind: "structured_output_validation",
     });
   });
 

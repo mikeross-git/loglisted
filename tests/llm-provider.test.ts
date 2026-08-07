@@ -126,4 +126,25 @@ describe("LLM provider abstraction", () => {
     });
     expect(JSON.stringify(failure)).not.toContain("sensitive provider message");
   });
+
+  it("classifies successful responses that omit structured output without retaining content", async () => {
+    const provider = new OpenAiProvider({
+      apiKey: "test-key",
+      fetchImplementation: () =>
+        Promise.resolve(
+          new Response(JSON.stringify({ id: "resp_missing", output: [] }), {
+            status: 200,
+            headers: { "x-request-id": "req_missing" },
+          }),
+        ),
+    });
+
+    const failure = await provider.generateStructured(request).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(LlmFailureError);
+    expect((failure as LlmFailureError).details).toMatchObject({
+      provider: "openai",
+      requestId: "req_missing",
+      failureKind: "missing_output_text",
+    });
+  });
 });

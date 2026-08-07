@@ -522,6 +522,7 @@ export function createProductionApp(
               providerRequestId,
               providerCode,
               providerParam,
+              failureKind,
               status,
             }) => {
               logger.warn("production.analysis_rejected", {
@@ -533,6 +534,7 @@ export function createProductionApp(
                 ...(providerRequestId ? { providerRequestId } : {}),
                 ...(providerCode ? { providerCode } : {}),
                 ...(providerParam ? { providerParam } : {}),
+                ...(failureKind ? { failureKind } : {}),
                 status,
                 environment: "production",
               });
