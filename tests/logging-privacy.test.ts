@@ -1,7 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { SafeLogger, sanitizedErrorFields } from "../src/lib/logger.js";
+import { SafeLogger, sanitizedErrorFields, type LogEvent } from "../src/lib/logger.js";
 
 describe("logging and observability privacy", () => {
+  it("allows privacy-safe provider failure diagnostics", () => {
+    const events: LogEvent[] = [];
+    const logger = new SafeLogger((event) => events.push(event));
+
+    logger.warn("production.analysis_rejected", {
+      processingStage: "summarization",
+      errorClass: "LlmFailureError",
+      errorCode: "LLM_FAILED",
+      providerStatus: 400,
+      providerRequestId: "req_safe123",
+      providerCode: "invalid_request_error",
+      providerParam: "seed",
+      status: 502,
+      environment: "production",
+    });
+
+    expect(events).toHaveLength(1);
+    expect(events[0]?.fields).toMatchObject({
+      providerStatus: 400,
+      providerRequestId: "req_safe123",
+      providerCode: "invalid_request_error",
+      providerParam: "seed",
+    });
+  });
+
   it.each([
     "screenplayText",
     "chunkText",
