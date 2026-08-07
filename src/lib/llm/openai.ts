@@ -22,6 +22,18 @@ const OpenAiResponseSchema = z
   })
   .passthrough();
 
+const OpenAiErrorResponseSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.string().nullable().optional(),
+        param: z.string().nullable().optional(),
+        type: z.string().optional(),
+      })
+      .passthrough(),
+  })
+  .passthrough();
+
 export interface OpenAiProviderOptions {
   apiKey?: string;
   baseUrl?: string;
@@ -129,10 +141,20 @@ export class OpenAiProvider implements LlmProvider {
           const error = new Error(`OpenAI HTTP ${response.status}`) as Error & {
             status: number;
             request_id?: string;
+            provider_code?: string;
+            provider_param?: string;
           };
           error.status = response.status;
           const requestId = response.headers.get("x-request-id");
           if (requestId) error.request_id = requestId;
+          const errorBody = OpenAiErrorResponseSchema.safeParse(
+            await response.json().catch(() => null),
+          );
+          if (errorBody.success) {
+            const providerCode = errorBody.data.error.code ?? errorBody.data.error.type;
+            if (providerCode) error.provider_code = providerCode;
+            if (errorBody.data.error.param) error.provider_param = errorBody.data.error.param;
+          }
           throw error;
         }
         const body = OpenAiResponseSchema.parse(await response.json());

@@ -9,6 +9,7 @@ import { ScriptBudget } from "../src/lib/budget.js";
 import { VersionedCache } from "../src/lib/cache.js";
 import { calculateSha256 } from "../src/lib/file-hash.js";
 import { DeletionTokenManager } from "../src/lib/deletion-token.js";
+import { LlmFailureError } from "../src/lib/errors.js";
 import { hashIp } from "../src/lib/ip.js";
 import { FakeLlmProvider } from "../src/lib/llm/provider.js";
 import { parseModelPricing } from "../src/lib/model-pricing.js";
@@ -38,7 +39,9 @@ const scoreOutput = {
   confidence: 0.8,
 };
 
-async function setup(options: { providerMalformed?: boolean; budget?: number } = {}) {
+async function setup(
+  options: { providerMalformed?: boolean; providerFailure?: boolean; budget?: number } = {},
+) {
   const pdf = await createTextPdf([
     [
       "THE TEST",
@@ -80,6 +83,17 @@ async function setup(options: { providerMalformed?: boolean; budget?: number } =
     primaryGenre: "Drama",
   });
   const provider = new FakeLlmProvider((request) => {
+    if (options.providerFailure) {
+      throw new LlmFailureError("Provider request failed.", {
+        details: {
+          provider: "openai",
+          status: 400,
+          requestId: "req_safe_diagnostic",
+          providerCode: "unknown_parameter",
+          providerParam: "seed",
+        },
+      });
+    }
     if (options.providerMalformed) return "{malformed";
     return request.schemaName === "screenplay_chunk_summary" ? validChunkSummary : scoreOutput;
   });
@@ -139,6 +153,30 @@ function analyzeRequest(pdf: Uint8Array, cookie: string, token: string): Request
 }
 
 describe("complete screenplay analysis endpoint", () => {
+  it("reports safe provider diagnostics without provider content", async () => {
+    const setupValue = await setup({ providerFailure: true });
+    const diagnostics: Parameters<NonNullable<AnalyzeDependencies["onRejection"]>>[0][] = [];
+    setupValue.dependencies.onRejection = (diagnostic) => diagnostics.push(diagnostic);
+
+    const response = await postAnalyze(
+      analyzeRequest(setupValue.pdf, setupValue.created.cookie, setupValue.issued.token),
+      setupValue.dependencies,
+    );
+
+    expect(response.status).toBe(502);
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        stage: "summarization",
+        errorCode: "LLM_FAILED",
+        providerStatus: 400,
+        providerRequestId: "req_safe_diagnostic",
+        providerCode: "unknown_parameter",
+        providerParam: "seed",
+      }),
+    ]);
+    expect(JSON.stringify(diagnostics)).not.toContain("Provider request failed");
+  });
+
   it("returns a completed score when a secondary CMS synchronization fails", async () => {
     const setupValue = await setup();
     setupValue.dependencies.onSuccessfulResult = vi.fn(() =>

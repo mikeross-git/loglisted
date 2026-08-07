@@ -61,4 +61,34 @@ describe("LLM provider abstraction", () => {
     expect(response.usage.outputTokens).toBe(0);
     expect(called).toBe(false);
   });
+
+  it("normalizes only safe provider error metadata", async () => {
+    const provider = new OpenAiProvider({
+      apiKey: "test-key",
+      fetchImplementation: () =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "unknown_parameter",
+                param: "seed",
+                message: "sensitive provider message must not propagate",
+              },
+            }),
+            { status: 400, headers: { "x-request-id": "req_safe" } },
+          ),
+        ),
+    });
+
+    const failure = await provider.generateStructured(request).catch((error: unknown) => error);
+    expect(failure).toBeInstanceOf(LlmFailureError);
+    expect((failure as LlmFailureError).details).toEqual({
+      provider: "openai",
+      status: 400,
+      requestId: "req_safe",
+      providerCode: "unknown_parameter",
+      providerParam: "seed",
+    });
+    expect(JSON.stringify(failure)).not.toContain("sensitive provider message");
+  });
 });

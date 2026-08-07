@@ -513,12 +513,26 @@ export function createProductionApp(
                 throw new ProcessingCapacityError("Global spend capacity has been reached.");
               }
             },
-            onRejection: ({ stage, errorClass, errorCode, reasonCode, status }) => {
+            onRejection: ({
+              stage,
+              errorClass,
+              errorCode,
+              reasonCode,
+              providerStatus,
+              providerRequestId,
+              providerCode,
+              providerParam,
+              status,
+            }) => {
               logger.warn("production.analysis_rejected", {
                 processingStage: stage,
                 errorClass,
                 errorCode,
                 ...(reasonCode ? { reasonCode } : {}),
+                ...(providerStatus !== undefined ? { providerStatus } : {}),
+                ...(providerRequestId ? { providerRequestId } : {}),
+                ...(providerCode ? { providerCode } : {}),
+                ...(providerParam ? { providerParam } : {}),
                 status,
                 environment: "production",
               });

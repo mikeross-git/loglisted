@@ -50,6 +50,10 @@ export interface AnalyzeRejectionDiagnostic {
   errorClass: string;
   errorCode: string;
   reasonCode?: string;
+  providerStatus?: number;
+  providerRequestId?: string;
+  providerCode?: string;
+  providerParam?: string;
   status: number;
 }
 
@@ -153,6 +157,22 @@ export async function postAnalyze(
       error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
         ? error.details["reasonCode"]
         : undefined;
+    const providerStatus =
+      error instanceof AppError && typeof error.details?.["status"] === "number"
+        ? error.details["status"]
+        : undefined;
+    const providerRequestId =
+      error instanceof AppError && typeof error.details?.["requestId"] === "string"
+        ? error.details["requestId"]
+        : undefined;
+    const providerCode =
+      error instanceof AppError && typeof error.details?.["providerCode"] === "string"
+        ? error.details["providerCode"]
+        : undefined;
+    const providerParam =
+      error instanceof AppError && typeof error.details?.["providerParam"] === "string"
+        ? error.details["providerParam"]
+        : undefined;
     const status =
       reasonCode === "pdf_file_size_limit" ||
       reasonCode === "pdf_page_minimum" ||
@@ -167,6 +187,10 @@ export async function postAnalyze(
         errorClass: error instanceof Error ? error.name : "UnknownError",
         errorCode: error instanceof AppError ? error.code : "UNEXPECTED_ANALYSIS_ERROR",
         ...(reasonCode ? { reasonCode } : {}),
+        ...(providerStatus !== undefined ? { providerStatus } : {}),
+        ...(providerRequestId ? { providerRequestId } : {}),
+        ...(providerCode ? { providerCode } : {}),
+        ...(providerParam ? { providerParam } : {}),
         status,
       });
     } catch {
