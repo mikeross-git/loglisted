@@ -2,7 +2,7 @@ export const versions = Object.freeze({
   parserVersion: "parser-1",
   metadataVersion: "metadata-1",
   chunkerVersion: "chunker-1",
-  summaryPromptVersion: "summary-prompt-1",
+  summaryPromptVersion: "summary-prompt-2",
   reducerVersion: "reducer-1",
   excerptSamplerVersion: "excerpt-sampler-1",
   rubricVersion: "rubric-1",

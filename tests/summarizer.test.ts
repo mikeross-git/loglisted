@@ -7,6 +7,7 @@ import { parseModelPricing } from "../src/lib/model-pricing.js";
 import {
   ChunkSummarySchema,
   InMemorySummaryCache,
+  normalizeProviderChunkSummary,
   normalizedChunkHash,
   summarizeChunks,
 } from "../src/lib/summarizer.js";
@@ -44,6 +45,27 @@ describe("chunk summarizer", () => {
         events: Array.from({ length: 7 }, () => "event"),
       }).success,
     ).toBe(false);
+  });
+
+  it("deterministically enforces local word limits on structurally valid provider output", () => {
+    const longStatement = Array.from({ length: 40 }, (_, index) => `word${index}`).join(" ");
+    const normalized = normalizeProviderChunkSummary({
+      ...validChunkSummary,
+      events: Array.from({ length: 6 }, () => longStatement),
+      characterChanges: Array.from({ length: 12 }, () => ({
+        character: "ALEX",
+        change: longStatement,
+      })),
+      productionElements: {
+        locations: Array.from({ length: 12 }, () => longStatement),
+        largeScaleElements: Array.from({ length: 8 }, () => longStatement),
+        castNotes: Array.from({ length: 8 }, () => longStatement),
+      },
+    });
+
+    expect(ChunkSummarySchema.safeParse(normalized).success).toBe(true);
+    expect(normalized.events.every((value) => value.split(/\s+/).length <= 24)).toBe(true);
+    expect(JSON.stringify(normalized).split(/\s+/).length).toBeLessThan(250);
   });
 
   it("summarizes chunks concurrently and preserves input order", async () => {

@@ -50,6 +50,84 @@ export const ChunkSummarySchema = z
 
 export type ChunkSummary = z.infer<typeof ChunkSummarySchema>;
 
+const ProviderChunkSummarySchema = z
+  .object({
+    events: z.array(z.string().max(1_000)).max(6),
+    characterChanges: z
+      .array(
+        z
+          .object({
+            character: z.string().min(1).max(100),
+            change: z.string().max(1_000),
+          })
+          .strict(),
+      )
+      .max(12),
+    conflicts: z.array(z.string().max(1_000)).max(3),
+    setupPayoff: z.array(z.string().max(1_000)).max(3),
+    toneTags: z.array(z.string().max(200)).max(5),
+    dialogueTraits: z.array(z.string().max(200)).max(5),
+    themes: z.array(z.string().max(200)).max(3),
+    productionElements: z
+      .object({
+        locations: z.array(z.string().max(500)).max(12),
+        largeScaleElements: z.array(z.string().max(500)).max(8),
+        castNotes: z.array(z.string().max(500)).max(8),
+      })
+      .strict(),
+  })
+  .strict();
+
+type ProviderChunkSummary = z.infer<typeof ProviderChunkSummarySchema>;
+
+function truncateWords(value: string, maximum: number): string {
+  return value.trim().split(/\s+/).filter(Boolean).slice(0, maximum).join(" ");
+}
+
+function summaryWordCount(value: unknown): number {
+  return JSON.stringify(value).split(/\s+/).filter(Boolean).length;
+}
+
+export function normalizeProviderChunkSummary(input: ProviderChunkSummary): ChunkSummary {
+  const normalized = {
+    events: input.events.map((value) => truncateWords(value, 24)),
+    characterChanges: input.characterChanges.map((value) => ({
+      character: value.character.trim() || "UNKNOWN",
+      change: truncateWords(value.change, 20),
+    })),
+    conflicts: input.conflicts.map((value) => truncateWords(value, 24)),
+    setupPayoff: input.setupPayoff.map((value) => truncateWords(value, 24)),
+    toneTags: input.toneTags.map((value) => truncateWords(value, 4)),
+    dialogueTraits: input.dialogueTraits.map((value) => truncateWords(value, 4)),
+    themes: input.themes.map((value) => truncateWords(value, 4)),
+    productionElements: {
+      locations: input.productionElements.locations.map((value) => truncateWords(value, 8)),
+      largeScaleElements: input.productionElements.largeScaleElements.map((value) =>
+        truncateWords(value, 10),
+      ),
+      castNotes: input.productionElements.castNotes.map((value) => truncateWords(value, 10)),
+    },
+  };
+  const lowestPriorityArrays = [
+    normalized.productionElements.castNotes,
+    normalized.productionElements.largeScaleElements,
+    normalized.productionElements.locations,
+    normalized.dialogueTraits,
+    normalized.toneTags,
+    normalized.themes,
+    normalized.characterChanges,
+    normalized.setupPayoff,
+    normalized.conflicts,
+    normalized.events,
+  ];
+  while (summaryWordCount(normalized) >= 250) {
+    const target = lowestPriorityArrays.find((values) => values.length > 0);
+    if (!target) break;
+    target.pop();
+  }
+  return ChunkSummarySchema.parse(normalized);
+}
+
 export interface SummarizedChunk {
   chunkIndex: number;
   pageStart: number;
@@ -164,7 +242,7 @@ async function summarizeOne(
       systemPrompt: CHUNK_SUMMARY_SYSTEM_PROMPT,
       userPayload: payload,
       schemaName: "screenplay_chunk_summary",
-      schema: ChunkSummarySchema,
+      schema: ProviderChunkSummarySchema,
       maximumOutputTokens: options.maximumOutputTokens,
       timeoutMs: options.timeoutMs,
       temperature: 0,
@@ -176,16 +254,17 @@ async function summarizeOne(
         act: chunk.act,
       },
     });
+    const summary = normalizeProviderChunkSummary(response.output);
     const actual = calculateCost(options.pricing, options.model, response.usage);
     await options.budget.reconcile(reservation, response.usage, actual);
-    await options.cache.set(cacheKey, response.output);
+    await options.cache.set(cacheKey, summary);
     return {
       chunkIndex: chunk.chunkIndex,
       pageStart: chunk.pageStart,
       pageEnd: chunk.pageEnd,
       sceneIds: chunk.sceneIds,
       act: chunk.act,
-      summary: response.output,
+      summary,
       usage: response.usage,
       cost: actual,
       latencyMs: response.latencyMs,
