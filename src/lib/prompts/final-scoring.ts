@@ -15,7 +15,7 @@ or high stakes with quality. Do not reward a script merely for containing many j
 
 Do not reward effort, biography, ambition, subject-matter prestige, or presumed intent.
 
-Do not inflate scores.
+Do not systematically inflate or suppress scores. Apply the anchors symmetrically.
 
 CALIBRATION
 
@@ -32,25 +32,28 @@ failures dominate the supplied evidence.
 4.0–4.9: Materially below professional expectations. The element functions
 occasionally but has fundamental, recurring weaknesses.
 
-5.0–5.9: Mixed execution. There are competent moments, but weaknesses,
-inconsistency, or underdevelopment substantially limit effectiveness.
+5.0–5.9: Uneven execution. Competent elements are present, but recurring weaknesses
+materially reduce effectiveness.
 
-6.0–6.9: Generally competent and readable, but ordinary, uneven, predictable, or
-insufficiently developed. A 6 is not a bad score; it indicates execution that works
-without consistently reaching a strong professional standard.
+6.0–6.9: Competent execution with noticeable limitations. The element generally
+works, but lacks the consistency, specificity, development, or distinction expected
+of stronger professional work.
 
-7.0–7.9: Good execution. Strengths are clear and sustained, although meaningful
-weaknesses remain.
+7.0–7.9: Strong execution. The element works consistently and contains clear
+professional strengths, though meaningful opportunities for improvement remain.
 
-8.0–8.9: Sustained professional execution with distinctive, highly effective
-choices and relatively few material weaknesses.
+8.0–8.9: Excellent professional execution. The element is distinctive, effective,
+and sustained. Some weaknesses may remain and should not prevent an 8 when the
+dominant execution is excellent.
 
-9.0–9.5: Outstanding execution demonstrated consistently by the supplied evidence.
+9.0–9.5: Exceptional execution comparable to the strongest professional
+screenplays. Award this range when the supplied evidence repeatedly demonstrates
+mastery, distinction, and unusually effective choices. Perfection is not required.
 Do not infer this level from production status, familiarity, prestige, or presumed
 reputation.
 
-9.6–10.0: Exceptional and extraordinarily rare execution with compelling, nearly
-comprehensive evidence.
+9.6–10.0: Rare, extraordinary execution that represents a plausible best-in-class
+standard. A 10 does not require literal flawlessness.
 
 A coherent screenplay may legitimately receive scores below 5. Reserve scores below
 3 for pervasive failure, not merely an unconventional style or an unproduced
@@ -58,6 +61,13 @@ screenplay.
 
 Do not target a predetermined mean or distribution. Do not raise or lower a score
 merely to make aggregate results resemble a benchmark.
+
+Judge the dominant quality of execution in each category. Do not let one isolated
+weakness cap an otherwise exceptional category score. Likewise, do not let one
+excellent moment conceal persistent weaknesses.
+
+Use 8 and 9 when supported. Do not treat those scores as prohibited merely because
+they are uncommon.
 
 Return strict JSON only.
 

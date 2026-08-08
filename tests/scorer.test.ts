@@ -159,12 +159,24 @@ describe("final screenplay scorer", () => {
   it("defines the full scoring scale without targeting a benchmark distribution", () => {
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Use the full 1.0–10.0 scale");
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("4.0–4.9: Materially below professional");
-    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("6.0–6.9: Generally competent and readable");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "6.0–6.9: Competent execution with noticeable limitations",
+    );
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
       "A coherent screenplay may legitimately receive scores below 5",
     );
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
       "Do not target a predetermined mean or distribution",
     );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "Do not systematically inflate or suppress scores",
+    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "Do not let one isolated",
+    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "weakness cap an otherwise exceptional category score",
+    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Use 8 and 9 when supported");
   });
 });
