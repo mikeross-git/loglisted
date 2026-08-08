@@ -172,6 +172,7 @@ export async function analyzeScreenplay(
         dependencies.onProcessingStage?.("reduction");
         reduced = reduceScreenplaySummaries(summaries, screenplay.objective, {
           format: screenplay.inferred.detectedFormat.value,
+          declaredGenre: claims.primaryGenre,
         });
         await dependencies.cache.set(
           "reduced_screenplay",
@@ -185,6 +186,7 @@ export async function analyzeScreenplay(
       const excerpts = ExcerptsSchema.parse(
         sampleRepresentativeExcerpts(screenplay, {
           maximumTokens: dependencies.representativeExcerptTokenBudget ?? 4_000,
+          declaredGenre: claims.primaryGenre,
         }),
       );
       dependencies.onProcessingStage?.("scoring");

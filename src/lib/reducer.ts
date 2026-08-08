@@ -75,6 +75,10 @@ function frequencies(values: readonly string[]): Record<string, number> {
   return result;
 }
 
+function isComedyGenre(value: string | undefined): boolean {
+  return Boolean(value && /(?:comedy|comic|sitcom|rom[ -]?com|dramedy)/i.test(value));
+}
+
 const majorPlotPattern =
   /\b(?:inciting|discovers?|reveals?|betrays?|dies?|kills?|climax|confronts?|defeats?|escapes?|resolves?|resolution|final|payoff|turning point)\b/i;
 const unresolvedPattern =
@@ -88,7 +92,11 @@ function inferGoal(evidence: readonly string[]): string {
   );
 }
 
-function compactToBudget(value: ReducedScreenplay, maximumTokens: number): ReducedScreenplay {
+function compactToBudget(
+  value: ReducedScreenplay,
+  maximumTokens: number,
+  preserveComicEvidence: boolean,
+): ReducedScreenplay {
   const tokenCount = (): number => estimateTokens(JSON.stringify(value));
   if (tokenCount() <= maximumTokens) return value;
 
@@ -106,11 +114,28 @@ function compactToBudget(value: ReducedScreenplay, maximumTokens: number): Reduc
   const removableEvents = value.acts.flatMap((act) =>
     act.events
       .map((event, index) => ({ act, event, index }))
-      .filter(({ event }) => !majorPlotPattern.test(event)),
+      .filter(
+        ({ event }) =>
+          !majorPlotPattern.test(event) &&
+          (!preserveComicEvidence || !minorJokePattern.test(event)),
+      ),
   );
   for (const candidate of removableEvents.reverse()) {
     if (tokenCount() <= maximumTokens) break;
     candidate.act.events.splice(candidate.index, 1);
+  }
+
+  if (preserveComicEvidence && tokenCount() > maximumTokens) {
+    const comicEvents = value.acts.flatMap((act) =>
+      act.events
+        .map((event, index) => ({ act, event, index }))
+        .filter(({ event }) => !majorPlotPattern.test(event) && minorJokePattern.test(event)),
+    );
+    for (const candidate of comicEvents.reverse()) {
+      if (tokenCount() <= maximumTokens || comicEvents.length <= 8) break;
+      candidate.act.events.splice(candidate.index, 1);
+      comicEvents.pop();
+    }
   }
 
   for (const act of [...value.acts].reverse()) {
@@ -130,8 +155,9 @@ function compactToBudget(value: ReducedScreenplay, maximumTokens: number): Reduc
 export function reduceScreenplaySummaries(
   summaries: readonly SummarizedChunk[],
   metadata: ObjectiveMetadata,
-  options: { maximumTokens?: number; format?: string } = {},
+  options: { maximumTokens?: number; format?: string; declaredGenre?: string } = {},
 ): ReducedScreenplay {
+  const preserveComicEvidence = isComedyGenre(options.declaredGenre);
   const ordered = [...summaries].sort((a, b) => a.chunkIndex - b.chunkIndex);
   const actMap = new Map<string, ReducedScreenplay["acts"][number]>();
   const characterEvidence = new Map<string, string[]>();
@@ -150,9 +176,11 @@ export function reduceScreenplaySummaries(
       act = { act: actName, events: [], turningPoints: [], unresolvedThreads: [] };
       actMap.set(actName, act);
     }
-    const events = chunk.summary.events.filter(
-      (event) => !minorJokePattern.test(event) || majorPlotPattern.test(event),
-    );
+    const events = preserveComicEvidence
+      ? chunk.summary.events
+      : chunk.summary.events.filter(
+          (event) => !minorJokePattern.test(event) || majorPlotPattern.test(event),
+        );
     act.events.push(...events);
     const setupPayoff = chunk.summary.setupPayoff;
     act.turningPoints.push(...setupPayoff.filter((item) => majorPlotPattern.test(item)));
@@ -233,5 +261,7 @@ export function reduceScreenplaySummaries(
     },
     objectiveMetadata: metadata,
   };
-  return ReducedScreenplaySchema.parse(compactToBudget(result, options.maximumTokens ?? 6_000));
+  return ReducedScreenplaySchema.parse(
+    compactToBudget(result, options.maximumTokens ?? 6_000, preserveComicEvidence),
+  );
 }

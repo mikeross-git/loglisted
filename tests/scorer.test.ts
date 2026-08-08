@@ -4,6 +4,7 @@ import { ScriptBudget } from "../src/lib/budget.js";
 import { LlmFailureError } from "../src/lib/errors.js";
 import { FakeLlmProvider } from "../src/lib/llm/provider.js";
 import { parseModelPricing } from "../src/lib/model-pricing.js";
+import { FINAL_SCORING_SYSTEM_PROMPT } from "../src/lib/prompts/final-scoring.js";
 import { reduceScreenplaySummaries } from "../src/lib/reducer.js";
 import {
   buildScoringPayload,
@@ -143,5 +144,15 @@ describe("final screenplay scorer", () => {
     });
     expect(JSON.stringify(provider.requests[0]?.userPayload)).not.toContain("riskScore");
     expect(JSON.stringify(provider.requests[0]?.userPayload)).not.toContain("writerEmail");
+  });
+
+  it("defines comedy execution without treating seriousness or joke volume as quality", () => {
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("setup and payoff");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "Do not equate seriousness, darkness, dramatic intensity",
+    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "Do not reward a script merely for containing many jokes",
+    );
   });
 });

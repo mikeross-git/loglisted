@@ -4,6 +4,9 @@ Do not evaluate writing quality.
 Do not assign scores.
 Do not provide prose commentary.
 Preserve only facts relevant to plot, character, tone, structure, pacing, dialogue style, theme, and production scope.
+When the material is comedic, preserve the mechanics that later scoring needs: joke setups and payoffs,
+callbacks, reversals, escalating comic situations, character-based comic patterns, and dialogue rhythm.
+Represent these concisely in events, setupPayoff, toneTags, and dialogueTraits without quoting jokes at length.
 Return strict JSON only.
 Do not speculate beyond the supplied excerpt.
 

@@ -87,6 +87,22 @@ describe("local screenplay summary reducer", () => {
     expect(serialized).toContain("unresolved");
   });
 
+  it("preserves comic beats for declared comedy while retaining prior behavior elsewhere", () => {
+    const summary = {
+      ...validChunkSummary,
+      events: ["A recurring joke becomes an escalating comic beat.", "Alex enters the room."],
+    };
+    const comedy = reduceScreenplaySummaries([makeSummarizedChunk(0, summary)], objectiveMetadata, {
+      declaredGenre: "Dark Comedy",
+    });
+    const drama = reduceScreenplaySummaries([makeSummarizedChunk(0, summary)], objectiveMetadata, {
+      declaredGenre: "Drama",
+    });
+
+    expect(JSON.stringify(comedy)).toContain("recurring joke");
+    expect(JSON.stringify(drama)).not.toContain("recurring joke");
+  });
+
   it("aggregates recurring tags, conflicts, and location frequency", () => {
     const result = reduceScreenplaySummaries(
       [makeSummarizedChunk(0), makeSummarizedChunk(1)],

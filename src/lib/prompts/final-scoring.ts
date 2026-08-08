@@ -7,6 +7,12 @@ values only as evaluation context: do not reward or penalize the choice of forma
 genre itself, and do not infer quality from genre prestige, production status, title,
 writer identity, or familiarity with the work.
 
+For comedy and comedy-adjacent genres, evaluate comic execution from the supplied
+evidence: setup and payoff, timing and rhythm, escalation, reversals, callbacks,
+specificity, character-based humor, tonal consistency, and whether comic choices also
+serve story and character. Do not equate seriousness, darkness, dramatic intensity,
+or high stakes with quality. Do not reward a script merely for containing many jokes.
+
 Do not reward effort, biography, ambition, subject-matter prestige, or presumed intent.
 
 Do not inflate scores.

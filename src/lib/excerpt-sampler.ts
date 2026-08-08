@@ -15,6 +15,7 @@ export const RepresentativeExcerptSchema = z
         "midpoint",
         "climax",
         "dialogue_heavy",
+        "comic_rhythm",
         "action_heavy",
         "fallback",
       ]),
@@ -61,7 +62,7 @@ function fitSceneText(scene: Scene, remainingTokens: number): string {
 
 export function sampleRepresentativeExcerpts(
   screenplayInput: ParsedScreenplay,
-  options: { maximumTokens?: number } = {},
+  options: { maximumTokens?: number; declaredGenre?: string } = {},
 ): RepresentativeExcerpt[] {
   const screenplay = ParsedScreenplaySchema.parse(screenplayInput);
   const maximumTokens = z
@@ -105,6 +106,27 @@ export function sampleRepresentativeExcerpts(
   });
   add(rankedDialogue[0], "dialogue_heavy");
   add(rankedDialogue[1], "dialogue_heavy");
+  const comedyGenre = Boolean(
+    options.declaredGenre &&
+    /(?:comedy|comic|sitcom|rom[ -]?com|dramedy)/i.test(options.declaredGenre),
+  );
+  if (comedyGenre) {
+    add(rankedDialogue[2], "dialogue_heavy");
+    const comicRhythmScene = [...scenes].sort((a, b) => {
+      const score = (scene: Scene): number => {
+        const dialogueBlocks = scene.blocks.filter((block) => block.type === "dialogue");
+        const shortDialogueBlocks = dialogueBlocks.filter(
+          (block) => block.text.split(/\s+/).filter(Boolean).length <= 12,
+        ).length;
+        const parentheticals = scene.blocks.filter(
+          (block) => block.type === "parenthetical",
+        ).length;
+        return shortDialogueBlocks * 3 + dialogueBlocks.length + parentheticals * 2;
+      };
+      return score(b) - score(a) || a.index - b.index;
+    })[0];
+    add(comicRhythmScene, "comic_rhythm");
+  }
   const actionScene = [...scenes].sort(
     (a, b) =>
       countBlocks(b, ["action"]) -
@@ -120,10 +142,13 @@ export function sampleRepresentativeExcerpts(
     .sort((a, b) => a.scene.index - b.scene.index);
   const output: RepresentativeExcerpt[] = [];
   let usedTokens = 0;
+  const comedyExcerptLimit = comedyGenre
+    ? Math.max(1, Math.floor(maximumTokens / selected.length))
+    : maximumTokens;
   for (const { scene, landmarks } of selected) {
     const remaining = maximumTokens - usedTokens;
     if (remaining <= 0) break;
-    const text = fitSceneText(scene, remaining);
+    const text = fitSceneText(scene, Math.min(remaining, comedyExcerptLimit));
     if (!text) continue;
     const estimatedTokens = estimateTokens(text);
     output.push({

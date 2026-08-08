@@ -65,6 +65,20 @@ describe("representative excerpt sampler", () => {
     ).toBe(true);
   });
 
+  it("adds comedy-rhythm evidence only for comedy-oriented submissions", () => {
+    const screenplay = parsePages([
+      "TITLE\n\nINT. ROOM - DAY\nAction.",
+      "INT. CAFE - DAY\n\nALEX\nOne.\n\nJORDAN\nTwo.\n\nALEX\nThree.\n\nJORDAN\nFour.",
+      "EXT. ROAD - NIGHT\nAction continues.",
+      "INT. HOME - DAY\nResolution.",
+    ]);
+    const comedy = sampleRepresentativeExcerpts(screenplay, { declaredGenre: "Comedy" });
+    const drama = sampleRepresentativeExcerpts(screenplay, { declaredGenre: "Drama" });
+
+    expect(comedy.some((excerpt) => excerpt.landmarks.includes("comic_rhythm"))).toBe(true);
+    expect(drama.some((excerpt) => excerpt.landmarks.includes("comic_rhythm"))).toBe(false);
+  });
+
   it("prevents duplicate scene selection while combining landmark labels", () => {
     const screenplay = parsePages(screenplayPages(4));
     const excerpts = sampleRepresentativeExcerpts(screenplay);
