@@ -13,7 +13,7 @@ describe("screenplay rubric", () => {
     expect(scoringAnchors).toEqual({
       good: 7,
       sustainedProfessionalExecution: 8,
-      outstandingProducedQuality: 9,
+      exceptionalProfessionalExecution: 9,
       extraordinarilyRareAbove: 9.5,
     });
   });

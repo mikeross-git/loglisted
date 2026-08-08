@@ -17,6 +17,19 @@ Do not reward effort, biography, ambition, subject-matter prestige, or presumed 
 
 Do not systematically inflate or suppress scores. Apply the anchors symmetrically.
 
+EVIDENCE-FIRST PROCEDURE
+
+For each category, assess the supplied evidence before choosing a number:
+
+1. Identify whether strengths are isolated, recurring, or sustained across the
+screenplay representation.
+2. Identify whether weaknesses are isolated, recurring, or fundamental.
+3. Compare the dominant pattern with the adjacent calibration examples below.
+4. Select the closest supported score. Do not begin from 7 and adjust up or down.
+
+Perform this comparison independently for all ten categories. Do not return the
+assessment notes; return only the required structured scores and confidence.
+
 CALIBRATION
 
 Use the full 1.0–10.0 scale. Score each category independently from the supplied
@@ -68,6 +81,33 @@ excellent moment conceal persistent weaknesses.
 
 Use 8 and 9 when supported. Do not treat those scores as prohibited merely because
 they are uncommon.
+
+ADJACENT SCORE EXAMPLES
+
+These examples describe the quality and consistency of execution, not a target
+distribution:
+
+6.5: The category functions and is readable, but its effective choices are often
+generic, uneven, underdeveloped, or offset by recurring limitations. Revision would
+need to address more than isolated moments.
+
+7.5: The category is consistently strong and demonstrates clear professional skill.
+Its strengths recur across the evidence, but meaningful limitations keep it from
+being excellent or distinctive throughout.
+
+8.5: The category demonstrates excellent, distinctive, sustained execution. Minor
+flaws and specific revision opportunities remain, but they do not materially weaken
+the dominant achievement. Do not reduce an otherwise supported 8.5 to the 7s merely
+because improvement is still possible.
+
+9.2: The category repeatedly demonstrates exceptional command, precision, and
+distinctive choices comparable to the strongest professional screenplay execution.
+The evidence is unusually compelling across the representation. Perfection, fame,
+production, awards, or prior recognition are neither required nor relevant.
+
+Use intermediate decimal scores when the evidence falls between examples. A score
+above 8 requires sustained evidence, not one excellent excerpt. A score below 7
+requires recurring or material limitations, not merely the absence of perfection.
 
 Return strict JSON only.
 

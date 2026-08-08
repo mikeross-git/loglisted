@@ -88,6 +88,6 @@ export const screenplayRubric = ScreenplayRubricSchema.parse({
 export const scoringAnchors = Object.freeze({
   good: 7,
   sustainedProfessionalExecution: 8,
-  outstandingProducedQuality: 9,
+  exceptionalProfessionalExecution: 9,
   extraordinarilyRareAbove: 9.5,
 });

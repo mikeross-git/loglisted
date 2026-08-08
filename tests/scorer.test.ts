@@ -178,5 +178,26 @@ describe("final screenplay scorer", () => {
       "weakness cap an otherwise exceptional category score",
     );
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Use 8 and 9 when supported");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("EVIDENCE-FIRST PROCEDURE");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Do not begin from 7");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("6.5:");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("7.5:");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("8.5:");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("9.2:");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Perfection, fame,");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "production, awards, or prior recognition are neither required nor relevant",
+    );
+  });
+
+  it("uses production-neutral scoring anchor names in the model payload", () => {
+    const payload = buildScoringPayload(representation, objectiveMetadata, [], {
+      declaredFormat: "feature",
+      declaredGenre: "Comedy",
+    });
+    const serialized = JSON.stringify(payload);
+
+    expect(serialized).toContain("exceptionalProfessionalExecution");
+    expect(serialized).not.toContain("outstandingProducedQuality");
   });
 });
