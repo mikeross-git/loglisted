@@ -6,7 +6,7 @@ export const versions = Object.freeze({
   reducerVersion: "reducer-2",
   excerptSamplerVersion: "excerpt-sampler-2",
   rubricVersion: "rubric-1",
-  scoringPromptVersion: "scoring-prompt-3",
+  scoringPromptVersion: "scoring-prompt-4",
   riskModelVersion: "risk-model-1",
   costConfigVersion: "cost-config-1",
 } as const);

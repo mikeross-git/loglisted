@@ -155,4 +155,16 @@ describe("final screenplay scorer", () => {
       "Do not reward a script merely for containing many jokes",
     );
   });
+
+  it("defines the full scoring scale without targeting a benchmark distribution", () => {
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Use the full 1.0–10.0 scale");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("4.0–4.9: Materially below professional");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("6.0–6.9: Generally competent and readable");
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "A coherent screenplay may legitimately receive scores below 5",
+    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
+      "Do not target a predetermined mean or distribution",
+    );
+  });
 });

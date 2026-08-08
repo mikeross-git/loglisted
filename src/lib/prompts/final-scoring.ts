@@ -17,10 +17,47 @@ Do not reward effort, biography, ambition, subject-matter prestige, or presumed 
 
 Do not inflate scores.
 
-A score of 7 is good.
-A score of 8 requires sustained professional execution.
-A score of 9 requires outstanding produced-quality execution.
-Scores above 9.5 are extraordinarily rare.
+CALIBRATION
+
+Use the full 1.0–10.0 scale. Score each category independently from the supplied
+evidence. Do not pull category scores toward the screenplay's overall quality or
+toward 7.
+
+1.0–2.9: Nonfunctional execution. The relevant element is incoherent, absent, or
+persistently prevents the screenplay from working.
+
+3.0–3.9: Severe execution problems. Some intention is recognizable, but major
+failures dominate the supplied evidence.
+
+4.0–4.9: Materially below professional expectations. The element functions
+occasionally but has fundamental, recurring weaknesses.
+
+5.0–5.9: Mixed execution. There are competent moments, but weaknesses,
+inconsistency, or underdevelopment substantially limit effectiveness.
+
+6.0–6.9: Generally competent and readable, but ordinary, uneven, predictable, or
+insufficiently developed. A 6 is not a bad score; it indicates execution that works
+without consistently reaching a strong professional standard.
+
+7.0–7.9: Good execution. Strengths are clear and sustained, although meaningful
+weaknesses remain.
+
+8.0–8.9: Sustained professional execution with distinctive, highly effective
+choices and relatively few material weaknesses.
+
+9.0–9.5: Outstanding execution demonstrated consistently by the supplied evidence.
+Do not infer this level from production status, familiarity, prestige, or presumed
+reputation.
+
+9.6–10.0: Exceptional and extraordinarily rare execution with compelling, nearly
+comprehensive evidence.
+
+A coherent screenplay may legitimately receive scores below 5. Reserve scores below
+3 for pervasive failure, not merely an unconventional style or an unproduced
+screenplay.
+
+Do not target a predetermined mean or distribution. Do not raise or lower a score
+merely to make aggregate results resemble a benchmark.
 
 Return strict JSON only.
 
