@@ -9,6 +9,9 @@ import { reduceScreenplaySummaries } from "../src/lib/reducer.js";
 import {
   buildScoringPayload,
   calculateOverallScore,
+  calculateWeightedCategoryScores,
+  CriterionModelScoreSchema,
+  type CriterionScores,
   FinalModelScoreSchema,
   scoreScreenplay,
 } from "../src/lib/scorer.js";
@@ -30,6 +33,49 @@ const categoryScores = {
   tone: 7.82,
   marketability: 7.93,
   craft: 8.04,
+};
+
+const criterionScores: CriterionScores = {
+  premise: {
+    originality: 6,
+    clarity: 6.5,
+    hook: 7,
+    stakes: 6,
+    commercialAppeal: 6.5,
+  },
+  story: { conflict: 7, escalation: 7.5, causality: 7, emotionalImpact: 8, resolution: 7 },
+  structure: { opening: 7, plotProgression: 7, turningPoints: 7.5, climax: 8, sceneFlow: 7 },
+  characters: {
+    protagonist: 8,
+    supportingCharacters: 7.5,
+    characterArcs: 8,
+    motivation: 7.5,
+    relationships: 8,
+  },
+  dialogue: { naturalness: 9, subtext: 9.2, voice: 9.8, memorability: 9.6, efficiency: 8.8 },
+  pacing: {
+    momentum: 7,
+    sceneRhythm: 7.5,
+    narrativeBalance: 7,
+    tensionManagement: 7.5,
+    engagement: 7,
+  },
+  theme: { novelty: 7, clarity: 7, integration: 7.5, depth: 7.5, consistency: 7 },
+  tone: {
+    consistency: 8,
+    genreAlignment: 8,
+    emotionalAuthenticity: 7.5,
+    atmosphere: 8,
+    relatability: 7.5,
+  },
+  marketability: {
+    audienceAppeal: 7,
+    generalPositioning: 6.5,
+    productionFeasibility: 7,
+    distinctiveness: 6.5,
+    franchisePotential: 6,
+  },
+  craft: { formatting: 8, grammar: 8, visualStorytelling: 8.5, clarityOfWriting: 8, economy: 7.5 },
 };
 
 function budget(): ScriptBudget {
@@ -57,8 +103,20 @@ function options(provider: FakeLlmProvider) {
 describe("final screenplay scorer", () => {
   it.each([
     ["malformed JSON", "{broken"],
-    ["missing categories", { categoryScores: { premise: 7 }, confidence: 0.8 }],
-    ["out-of-range score", { categoryScores: { ...categoryScores, craft: 11 }, confidence: 0.8 }],
+    [
+      "missing criteria",
+      { criterionScores: { premise: criterionScores.premise }, confidence: 0.8 },
+    ],
+    [
+      "out-of-range score",
+      {
+        criterionScores: {
+          ...criterionScores,
+          craft: { ...criterionScores.craft, economy: 11 },
+        },
+        confidence: 0.8,
+      },
+    ],
   ])("rejects %s after one structured-output retry", async (_name, response) => {
     const provider = new FakeLlmProvider(() => response);
     await expect(
@@ -67,20 +125,23 @@ describe("final screenplay scorer", () => {
   });
 
   it("calculates the arithmetic mean locally and rounds only public values", async () => {
-    const provider = new FakeLlmProvider(() => ({ categoryScores, confidence: 0.876 }));
+    const provider = new FakeLlmProvider(() => ({ criterionScores, confidence: 0.876 }));
     const result = await scoreScreenplay(representation, objectiveMetadata, [], options(provider));
-    const expected = Object.values(categoryScores).reduce((sum, score) => sum + score, 0) / 10;
+    const weightedScores = calculateWeightedCategoryScores(criterionScores);
+    const expected = Object.values(weightedScores).reduce((sum, score) => sum + score, 0) / 10;
     expect(result.internal.overallScore).toBe(expected);
     expect(result.public.overallScore).toBe(Math.round(expected * 10) / 10);
-    expect(result.internal.categoryScores.premise).toBe(7.14);
-    expect(result.public.categoryScores.premise).toBe(7.1);
+    expect(result.internal.categoryScores.dialogue).toBeCloseTo(9.47);
+    expect(result.public.categoryScores.dialogue).toBe(9.5);
+    expect(result.public.categoryScores.premise).toBe(6.4);
+    expect(result.internal.criterionScores.dialogue.voice).toBe(9.8);
     expect(result.public.confidence).toBe(0.9);
     expect(result.versions.scoringModel).toBe("test-score");
     expect(result.versions.summaryPromptVersion).toBeTruthy();
   });
 
   it("fails explicitly rather than returning a low-confidence score", async () => {
-    const provider = new FakeLlmProvider(() => ({ categoryScores, confidence: 0.2 }));
+    const provider = new FakeLlmProvider(() => ({ criterionScores, confidence: 0.2 }));
     await expect(
       scoreScreenplay(representation, objectiveMetadata, [], options(provider)),
     ).rejects.toBeInstanceOf(LlmFailureError);
@@ -95,6 +156,10 @@ describe("final screenplay scorer", () => {
       }).success,
     ).toBe(false);
     expect(calculateOverallScore(categoryScores)).toBeGreaterThan(1);
+    expect(
+      CriterionModelScoreSchema.safeParse({ criterionScores, confidence: 0.8, overallScore: 10 })
+        .success,
+    ).toBe(false);
   });
 
   it("builds a prompt payload that excludes risk and identity metadata", () => {
@@ -132,7 +197,7 @@ describe("final screenplay scorer", () => {
   });
 
   it("passes only validated declared format and genre context to final scoring", async () => {
-    const provider = new FakeLlmProvider(() => ({ categoryScores, confidence: 0.8 }));
+    const provider = new FakeLlmProvider(() => ({ criterionScores, confidence: 0.8 }));
     await scoreScreenplay(representation, objectiveMetadata, [], options(provider));
 
     expect(provider.requests).toHaveLength(1);
@@ -171,9 +236,7 @@ describe("final screenplay scorer", () => {
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
       "Do not systematically inflate or suppress scores",
     );
-    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
-      "Do not let one isolated",
-    );
+    expect(FINAL_SCORING_SYSTEM_PROMPT).toContain("Do not let one isolated");
     expect(FINAL_SCORING_SYSTEM_PROMPT).toContain(
       "weakness cap an otherwise exceptional category score",
     );

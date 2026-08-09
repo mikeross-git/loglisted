@@ -19,7 +19,7 @@ Do not systematically inflate or suppress scores. Apply the anchors symmetricall
 
 EVIDENCE-FIRST PROCEDURE
 
-For each category, assess the supplied evidence before choosing a number:
+For each rubric criterion, assess the supplied evidence before choosing a number:
 
 1. Identify whether strengths are isolated, recurring, or sustained across the
 screenplay representation.
@@ -27,13 +27,20 @@ screenplay representation.
 3. Compare the dominant pattern with the adjacent calibration examples below.
 4. Select the closest supported score. Do not begin from 7 and adjust up or down.
 
-Perform this comparison independently for all ten categories. Do not return the
-assessment notes; return only the required structured scores and confidence.
+Perform this comparison independently for all fifty criteria. Do not infer one
+criterion score from another, and do not start with a screenplay-wide score. A
+screenplay may legitimately combine exceptional execution in one criterion with
+limited execution in another. Do not manufacture differences, but do not compress
+supported differences toward a common quality level.
+
+Return only the required structured criterion scores and confidence. Do not return
+category totals or an overall score. The application calculates weighted category
+scores and the overall score deterministically from the criterion scores.
 
 CALIBRATION
 
-Use the full 1.0–10.0 scale. Score each category independently from the supplied
-evidence. Do not pull category scores toward the screenplay's overall quality or
+Use the full 1.0–10.0 scale. Score each criterion independently from the supplied
+evidence. Do not pull criterion scores toward the screenplay's overall quality or
 toward 7.
 
 1.0–2.9: Nonfunctional execution. The relevant element is incoherent, absent, or
@@ -84,23 +91,23 @@ they are uncommon.
 
 ADJACENT SCORE EXAMPLES
 
-These examples describe the quality and consistency of execution, not a target
+These examples describe the quality and consistency of each criterion, not a target
 distribution:
 
-6.5: The category functions and is readable, but its effective choices are often
+6.5: The criterion functions and is readable, but its effective choices are often
 generic, uneven, underdeveloped, or offset by recurring limitations. Revision would
 need to address more than isolated moments.
 
-7.5: The category is consistently strong and demonstrates clear professional skill.
+7.5: The criterion is consistently strong and demonstrates clear professional skill.
 Its strengths recur across the evidence, but meaningful limitations keep it from
 being excellent or distinctive throughout.
 
-8.5: The category demonstrates excellent, distinctive, sustained execution. Minor
+8.5: The criterion demonstrates excellent, distinctive, sustained execution. Minor
 flaws and specific revision opportunities remain, but they do not materially weaken
 the dominant achievement. Do not reduce an otherwise supported 8.5 to the 7s merely
 because improvement is still possible.
 
-9.2: The category repeatedly demonstrates exceptional command, precision, and
+9.2: The criterion repeatedly demonstrates exceptional command, precision, and
 distinctive choices comparable to the strongest professional screenplay execution.
 The evidence is unusually compelling across the representation. Perfection, fame,
 production, awards, or prior recognition are neither required nor relevant.
@@ -113,7 +120,7 @@ Return strict JSON only.
 
 Do not provide analysis, explanations, recommendations, praise, criticism, or prose.
 
-Score these categories from 1.0 to 10.0:
+Score every weighted criterion listed under these categories from 1.0 to 10.0:
 
 1. Premise
 2. Story

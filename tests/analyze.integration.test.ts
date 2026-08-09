@@ -16,6 +16,7 @@ import { parseModelPricing } from "../src/lib/model-pricing.js";
 import { AnonymousQuotas } from "../src/lib/quotas.js";
 import { SlidingWindowRateLimiter } from "../src/lib/rate-limit.js";
 import { ResultTokenManager } from "../src/lib/result-token.js";
+import { CriterionScoresSchema } from "../src/lib/scorer.js";
 import { MemoryAbuseStore } from "../src/lib/storage/memory-abuse-store.js";
 import { MemoryCacheStore } from "../src/lib/storage/memory-cache-store.js";
 import { ProcessingLock } from "../src/lib/storage/processing-lock.js";
@@ -36,6 +37,52 @@ const scoreOutput = {
     marketability: 7,
     craft: 7,
   },
+  confidence: 0.8,
+};
+
+const criterionScoreOutput = {
+  criterionScores: CriterionScoresSchema.parse({
+    premise: { originality: 7, clarity: 7, hook: 7, stakes: 7, commercialAppeal: 7 },
+    story: { conflict: 7, escalation: 7, causality: 7, emotionalImpact: 7, resolution: 7 },
+    structure: { opening: 7, plotProgression: 7, turningPoints: 7, climax: 7, sceneFlow: 7 },
+    characters: {
+      protagonist: 7,
+      supportingCharacters: 7,
+      characterArcs: 7,
+      motivation: 7,
+      relationships: 7,
+    },
+    dialogue: { naturalness: 7, subtext: 7, voice: 7, memorability: 7, efficiency: 7 },
+    pacing: {
+      momentum: 7,
+      sceneRhythm: 7,
+      narrativeBalance: 7,
+      tensionManagement: 7,
+      engagement: 7,
+    },
+    theme: { novelty: 7, clarity: 7, integration: 7, depth: 7, consistency: 7 },
+    tone: {
+      consistency: 7,
+      genreAlignment: 7,
+      emotionalAuthenticity: 7,
+      atmosphere: 7,
+      relatability: 7,
+    },
+    marketability: {
+      audienceAppeal: 7,
+      generalPositioning: 7,
+      productionFeasibility: 7,
+      distinctiveness: 7,
+      franchisePotential: 7,
+    },
+    craft: {
+      formatting: 7,
+      grammar: 7,
+      visualStorytelling: 7,
+      clarityOfWriting: 7,
+      economy: 7,
+    },
+  }),
   confidence: 0.8,
 };
 
@@ -95,7 +142,9 @@ async function setup(
       });
     }
     if (options.providerMalformed) return "{malformed";
-    return request.schemaName === "screenplay_chunk_summary" ? validChunkSummary : scoreOutput;
+    return request.schemaName === "screenplay_chunk_summary"
+      ? validChunkSummary
+      : criterionScoreOutput;
   });
   const cacheStore = new MemoryCacheStore();
   const results = new MemoryResultStore();
@@ -358,7 +407,6 @@ describe("complete screenplay analysis endpoint", () => {
       ).status,
     ).toBe(422);
   });
-
 
   it("reuses a completed cached artifact without another LLM call or leaking ownership", async () => {
     const setupValue = await setup();

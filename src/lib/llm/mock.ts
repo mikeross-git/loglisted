@@ -118,9 +118,7 @@ function chunkSummary(request: StructuredOutputRequest<unknown>): unknown {
       characters.length >= 2
         ? [limitWords(`${characters[0]} conflicts with ${characters[1]}.`, 24)]
         : [],
-    setupPayoff: act
-      ? [limitWords(`${act} contains an unresolved story thread.`, 24)]
-      : [],
+    setupPayoff: act ? [limitWords(`${act} contains an unresolved story thread.`, 24)] : [],
     toneTags: keywords.slice(0, 3),
     dialogueTraits: characters.length ? ["character-specific", "concise"] : [],
     themes: keywords.slice(3, 5),
@@ -168,9 +166,44 @@ function scoringOutput(
       return [key, Math.max(1, Math.min(10, Math.round((base + variation) * 100) / 100))];
     }),
   );
-  return {
+  const categoryOutput = {
     categoryScores,
     confidence: fixture === "low_confidence" ? 0.2 : 0.82,
+  };
+  if (request.schema.safeParse(categoryOutput).success) return categoryOutput;
+
+  const rubricCriteria = {
+    premise: ["originality", "clarity", "hook", "stakes", "commercialAppeal"],
+    story: ["conflict", "escalation", "causality", "emotionalImpact", "resolution"],
+    structure: ["opening", "plotProgression", "turningPoints", "climax", "sceneFlow"],
+    characters: [
+      "protagonist",
+      "supportingCharacters",
+      "characterArcs",
+      "motivation",
+      "relationships",
+    ],
+    dialogue: ["naturalness", "subtext", "voice", "memorability", "efficiency"],
+    pacing: ["momentum", "sceneRhythm", "narrativeBalance", "tensionManagement", "engagement"],
+    theme: ["novelty", "clarity", "integration", "depth", "consistency"],
+    tone: ["consistency", "genreAlignment", "emotionalAuthenticity", "atmosphere", "relatability"],
+    marketability: [
+      "audienceAppeal",
+      "generalPositioning",
+      "productionFeasibility",
+      "distinctiveness",
+      "franchisePotential",
+    ],
+    craft: ["formatting", "grammar", "visualStorytelling", "clarityOfWriting", "economy"],
+  } as const;
+  return {
+    criterionScores: Object.fromEntries(
+      Object.entries(rubricCriteria).map(([category, criteria]) => [
+        category,
+        Object.fromEntries(criteria.map((criterion) => [criterion, categoryScores[category]!])),
+      ]),
+    ),
+    confidence: categoryOutput.confidence,
   };
 }
 

@@ -146,7 +146,7 @@ export const ConfigSchema = z
     MAX_TOTAL_OUTPUT_TOKENS_PER_SCRIPT: z.coerce.number().int().positive().default(8_000),
     MAX_CHUNK_SUMMARY_OUTPUT_TOKENS: z.coerce.number().int().positive().default(350),
     MAX_SCORING_INPUT_TOKENS: z.coerce.number().int().positive().default(12_000),
-    MAX_SCORING_OUTPUT_TOKENS: z.coerce.number().int().positive().default(350),
+    MAX_SCORING_OUTPUT_TOKENS: z.coerce.number().int().positive().default(1_200),
     REPRESENTATIVE_EXCERPT_TOKEN_BUDGET: z.coerce.number().int().positive().default(4_000),
     TARGET_COST_PER_SCRIPT_USD: z.coerce.number().positive().default(0.1),
     DAILY_LLM_SPEND_LIMIT_USD: z.coerce.number().positive().default(10),

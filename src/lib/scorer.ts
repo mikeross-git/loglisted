@@ -16,6 +16,112 @@ import { assertMinimizedLlmPayload } from "./ai-data-policy.js";
 
 const CategoryScoreSchema = z.number().min(1).max(10);
 
+const CriterionScoreSchema = z.number().min(1).max(10);
+
+export const CriterionScoresSchema = z
+  .object({
+    premise: z
+      .object({
+        originality: CriterionScoreSchema,
+        clarity: CriterionScoreSchema,
+        hook: CriterionScoreSchema,
+        stakes: CriterionScoreSchema,
+        commercialAppeal: CriterionScoreSchema,
+      })
+      .strict(),
+    story: z
+      .object({
+        conflict: CriterionScoreSchema,
+        escalation: CriterionScoreSchema,
+        causality: CriterionScoreSchema,
+        emotionalImpact: CriterionScoreSchema,
+        resolution: CriterionScoreSchema,
+      })
+      .strict(),
+    structure: z
+      .object({
+        opening: CriterionScoreSchema,
+        plotProgression: CriterionScoreSchema,
+        turningPoints: CriterionScoreSchema,
+        climax: CriterionScoreSchema,
+        sceneFlow: CriterionScoreSchema,
+      })
+      .strict(),
+    characters: z
+      .object({
+        protagonist: CriterionScoreSchema,
+        supportingCharacters: CriterionScoreSchema,
+        characterArcs: CriterionScoreSchema,
+        motivation: CriterionScoreSchema,
+        relationships: CriterionScoreSchema,
+      })
+      .strict(),
+    dialogue: z
+      .object({
+        naturalness: CriterionScoreSchema,
+        subtext: CriterionScoreSchema,
+        voice: CriterionScoreSchema,
+        memorability: CriterionScoreSchema,
+        efficiency: CriterionScoreSchema,
+      })
+      .strict(),
+    pacing: z
+      .object({
+        momentum: CriterionScoreSchema,
+        sceneRhythm: CriterionScoreSchema,
+        narrativeBalance: CriterionScoreSchema,
+        tensionManagement: CriterionScoreSchema,
+        engagement: CriterionScoreSchema,
+      })
+      .strict(),
+    theme: z
+      .object({
+        novelty: CriterionScoreSchema,
+        clarity: CriterionScoreSchema,
+        integration: CriterionScoreSchema,
+        depth: CriterionScoreSchema,
+        consistency: CriterionScoreSchema,
+      })
+      .strict(),
+    tone: z
+      .object({
+        consistency: CriterionScoreSchema,
+        genreAlignment: CriterionScoreSchema,
+        emotionalAuthenticity: CriterionScoreSchema,
+        atmosphere: CriterionScoreSchema,
+        relatability: CriterionScoreSchema,
+      })
+      .strict(),
+    marketability: z
+      .object({
+        audienceAppeal: CriterionScoreSchema,
+        generalPositioning: CriterionScoreSchema,
+        productionFeasibility: CriterionScoreSchema,
+        distinctiveness: CriterionScoreSchema,
+        franchisePotential: CriterionScoreSchema,
+      })
+      .strict(),
+    craft: z
+      .object({
+        formatting: CriterionScoreSchema,
+        grammar: CriterionScoreSchema,
+        visualStorytelling: CriterionScoreSchema,
+        clarityOfWriting: CriterionScoreSchema,
+        economy: CriterionScoreSchema,
+      })
+      .strict(),
+  })
+  .strict();
+
+export const CriterionModelScoreSchema = z
+  .object({
+    criterionScores: CriterionScoresSchema,
+    confidence: z.number().min(0).max(1),
+  })
+  .strict();
+
+export type CriterionScores = z.infer<typeof CriterionScoresSchema>;
+
 export const FinalModelScoreSchema = z
   .object({
     categoryScores: z
@@ -40,7 +146,7 @@ export type FinalModelScore = z.infer<typeof FinalModelScoreSchema>;
 
 export interface FinalScoreResult {
   evaluationMode?: "mock";
-  internal: FinalModelScore & { overallScore: number };
+  internal: FinalModelScore & { overallScore: number; criterionScores: CriterionScores };
   public: {
     categoryScores: FinalModelScore["categoryScores"];
     overallScore: number;
@@ -94,6 +200,23 @@ export function calculateOverallScore(scores: FinalModelScore["categoryScores"])
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+export function calculateWeightedCategoryScores(
+  criterionScores: CriterionScores,
+): FinalModelScore["categoryScores"] {
+  const criteria = criterionScores as Record<string, Record<string, number>>;
+  const rubric = screenplayRubric as Record<string, Record<string, number>>;
+  const weighted = Object.fromEntries(
+    Object.entries(rubric).map(([category, weights]) => [
+      category,
+      Object.entries(weights).reduce(
+        (total, [criterion, weight]) => total + criteria[category]![criterion]! * weight,
+        0,
+      ),
+    ]),
+  );
+  return FinalModelScoreSchema.shape.categoryScores.parse(weighted);
+}
+
 function roundOne(value: number): number {
   return Math.round((value + Number.EPSILON) * 10) / 10;
 }
@@ -144,7 +267,7 @@ export async function scoreScreenplay(
       systemPrompt: FINAL_SCORING_SYSTEM_PROMPT,
       userPayload: payload,
       schemaName: "screenplay_score",
-      schema: FinalModelScoreSchema,
+      schema: CriterionModelScoreSchema,
       maximumOutputTokens: options.maximumOutputTokens,
       timeoutMs: options.timeoutMs,
       temperature: 0,
@@ -159,13 +282,19 @@ export async function scoreScreenplay(
         details: { confidence: response.output.confidence },
       });
     }
-    const overallScore = calculateOverallScore(response.output.categoryScores);
+    const categoryScores = calculateWeightedCategoryScores(response.output.criterionScores);
+    const overallScore = calculateOverallScore(categoryScores);
     const publicCategoryScores = Object.fromEntries(
-      Object.entries(response.output.categoryScores).map(([key, value]) => [key, roundOne(value)]),
+      Object.entries(categoryScores).map(([key, value]) => [key, roundOne(value)]),
     ) as FinalModelScore["categoryScores"];
     return {
       ...(options.provider.name === "mock" ? { evaluationMode: "mock" as const } : {}),
-      internal: { ...response.output, overallScore },
+      internal: {
+        categoryScores,
+        criterionScores: response.output.criterionScores,
+        confidence: response.output.confidence,
+        overallScore,
+      },
       public: {
         categoryScores: publicCategoryScores,
         overallScore: roundOne(overallScore),
