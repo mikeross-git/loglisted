@@ -554,3 +554,23 @@ Disable or suspend only the separate live-canary service, remove its Framer/API 
 page, and revoke its dedicated OpenAI key. The local and mock-staging commands and services remain
 unchanged. Do not point the production Framer uploader at the canary until an explicitly approved
 live test plan has passed.
+
+## Loglist moderation reports
+
+`POST /api/rankings/report` requires an anonymous session cookie, CSRF token, and a single-use
+Turnstile token with action `ranking_report`. The backend rate-limits reports, stores a private
+Redis audit record, updates the Scripts CMS moderation fields to `Pending Review`, and invalidates
+the rankings snapshot. Public responses expose only `clear` or `pending_review`, never reporter
+data or report details.
+
+```ini
+REPORT_TURNSTILE_EXPECTED_ACTION=ranking_report
+MODERATION_REPORT_RETENTION_DAYS=90
+MODERATION_REPORTS_PER_SESSION_PER_DAY=3
+MODERATION_REPORTS_PER_IP_PER_DAY=5
+```
+
+Set the Framer rankings component's **Turnstile Key** property to the public site key approved for
+`www.loglisted.com`. Review reports manually in the Scripts collection. Set **Flag Status** to
+`Dismissed` to clear the marker, or set `Confirmed Violation` and **Show on Loglist** to `No` to
+remove a listing. Never put the Turnstile secret or Framer API token in Framer code.

@@ -27,6 +27,7 @@ export interface PublicRankingRecord {
   websiteUrl: string | null;
   scores: RankingScores;
   updatedAt: string | null;
+  reportStatus?: "clear" | "pending_review";
 }
 
 export interface PublicRankingsResponse {

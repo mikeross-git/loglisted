@@ -11,9 +11,11 @@ import { getPrivacyStatus } from "./api/privacy-status.js";
 import { getPublicRankings } from "./api/rankings.js";
 import { deleteResult, getResult } from "./api/result.js";
 import { postSession } from "./api/session.js";
+import { postRankingReport } from "./api/report-ranking.js";
 import { postUploadAuthorize } from "./api/upload-authorize.js";
 import {
   FramerCmsSynchronizer,
+  FramerCmsModerationService,
   syncFramerCmsBestEffort,
   type FramerCmsConnector,
 } from "./integrations/framer-cms.js";
@@ -40,6 +42,7 @@ import { RedisCacheStore } from "./lib/storage/redis-cache-store.js";
 import { EncryptedCacheStore } from "./lib/storage/encrypted-cache-store.js";
 import { ProcessingLock } from "./lib/storage/processing-lock.js";
 import { RedisResultStore } from "./lib/storage/redis-result-store.js";
+import { RedisModerationReportStore } from "./lib/storage/moderation-report-store.js";
 import {
   UpstashRedisClient,
   type UpstashRedisCompatibleClient,
@@ -300,6 +303,14 @@ export function createProductionApp(
       ? { fetchImplementation: options.turnstileFetchImplementation }
       : {}),
   });
+  const reportTurnstile = new TurnstileVerifier(abuseStore, {
+    secretKey: validated.TURNSTILE_SECRET_KEY,
+    expectedHostnames: [validated.TURNSTILE_EXPECTED_HOSTNAME],
+    expectedAction: validated.REPORT_TURNSTILE_EXPECTED_ACTION,
+    ...(options.turnstileFetchImplementation
+      ? { fetchImplementation: options.turnstileFetchImplementation }
+      : {}),
+  });
   const spendLimits: SpendLimits = {
     hourlySpendLimitUsd: validated.HOURLY_LLM_SPEND_LIMIT_USD,
     dailySpendLimitUsd: validated.DAILY_LLM_SPEND_LIMIT_USD,
@@ -326,6 +337,20 @@ export function createProductionApp(
       FRAMER_RANKINGS_CACHE_TTL_SECONDS: validated.FRAMER_RANKINGS_CACHE_TTL_SECONDS,
     },
     options.framerCmsConnector,
+  );
+  const cmsModeration = new FramerCmsModerationService(
+    {
+      FRAMER_CMS_SYNC_ENABLED: validated.FRAMER_CMS_SYNC_ENABLED,
+      FRAMER_CMS_PUBLISH_MODE: validated.FRAMER_CMS_PUBLISH_MODE,
+      FRAMER_API_TOKEN: validated.FRAMER_API_TOKEN,
+      FRAMER_PROJECT_ID: validated.FRAMER_PROJECT_ID,
+      FRAMER_COLLECTION_ID: validated.FRAMER_COLLECTION_ID,
+    },
+    options.framerCmsConnector,
+  );
+  const moderationReports = new RedisModerationReportStore(
+    redis,
+    `loglisted:${validated.APP_ENV}:v1:moderation`,
   );
   const pipelineDependencies = {
     cache,
@@ -425,6 +450,29 @@ export function createProductionApp(
         await postSession(webRequest(request, JSON.stringify(request.body)), {
           sessions,
           originPolicy,
+        }),
+        response,
+      );
+    }),
+  );
+  app.post(
+    "/api/rankings/report",
+    route(async (request, response) => {
+      await sendWebResponse(
+        await postRankingReport(webRequest(request, JSON.stringify(request.body)), {
+          sessions,
+          csrfSigningSecret: validated.CSRF_SIGNING_SECRET,
+          ipHmacSecret: validated.IP_HMAC_SECRET,
+          directIp: clientIp(request),
+          originPolicy,
+          turnstile: reportTurnstile,
+          rateLimiter,
+          store: moderationReports,
+          cms: cmsModeration,
+          rankings,
+          retentionSeconds: validated.MODERATION_REPORT_RETENTION_DAYS * 86_400,
+          sessionDailyLimit: validated.MODERATION_REPORTS_PER_SESSION_PER_DAY,
+          ipDailyLimit: validated.MODERATION_REPORTS_PER_IP_PER_DAY,
         }),
         response,
       );

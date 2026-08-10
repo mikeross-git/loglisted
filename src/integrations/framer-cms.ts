@@ -55,6 +55,13 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   imdb: "IMDB",
   website: "Professional Website",
   showOnLoglist: "Show on Loglist",
+  flagged: "Flagged",
+  flagStatus: "Flag Status",
+  flagReason: "Flag Reason",
+  flaggedAt: "Flagged At",
+  flagReportId: "Flag Report ID",
+  flagReviewedAt: "Flag Reviewed At",
+  flagReviewNotes: "Flag Review Notes",
   searchIndex: "Search Index",
   format: "Format",
 });
@@ -66,7 +73,8 @@ function cmsValidationError(message: string): Error {
   return Object.assign(new Error(message), { status: 400 });
 }
 
-type SupportedFieldType = "boolean" | "collectionReference" | "enum" | "link" | "number" | "string";
+type SupportedFieldType =
+  "boolean" | "collectionReference" | "date" | "enum" | "link" | "number" | "string";
 
 export interface CmsFieldDescriptor {
   id: string;
@@ -186,7 +194,9 @@ function supportedField(
   const field = fields.find((candidate) => candidate.id === id);
   if (
     !field ||
-    !["boolean", "collectionReference", "enum", "link", "number", "string"].includes(field.type)
+    !["boolean", "collectionReference", "date", "enum", "link", "number", "string"].includes(
+      field.type,
+    )
   ) {
     throw cmsValidationError(`Framer CMS field ${id} has an unsupported type.`);
   }
@@ -203,6 +213,11 @@ function enumValue(field: CmsFieldDescriptor, displayValue: string): string {
   return match.id;
 }
 
+function displayFieldValue(field: CmsFieldDescriptor, value: unknown): unknown {
+  if (field.type !== "enum" || typeof value !== "string") return value;
+  return field.cases?.find((candidate) => candidate.id === value)?.name ?? value;
+}
+
 function fieldEntry(
   field: CmsFieldDescriptor & { type: SupportedFieldType },
   value: string | number | boolean,
@@ -213,6 +228,9 @@ function fieldEntry(
     return { type: "enum", value: enumValue(field, value) };
   }
   if (field.type === "link" && typeof value === "string") return { type: "link", value };
+  if (field.type === "date" && typeof value === "string") {
+    return { type: "date", value } as unknown as FieldDataInput[string];
+  }
   if (field.type === "collectionReference" && typeof value === "string") {
     return { type: "collectionReference", value };
   }
@@ -284,6 +302,13 @@ export function buildFramerCmsItem(
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     website: websiteUrl === "" ? undefined : websiteUrl,
     showOnLoglist: showOnLoglistField.type === "boolean" ? true : "Yes",
+    flagged: supportedField(fields, map.flagged).type === "boolean" ? false : "No",
+    flagStatus: "Clear",
+    flagReason: undefined,
+    flaggedAt: undefined,
+    flagReportId: undefined,
+    flagReviewedAt: undefined,
+    flagReviewNotes: undefined,
     searchIndex,
     format: formatLabel,
   };
@@ -297,6 +322,69 @@ export function buildFramerCmsItem(
     fieldData[field.id] = fieldEntry(field, value);
   }
   return { slug, fieldData, draft: publishMode === "draft" };
+}
+
+export type PublicFlagReason = "copyright" | "inappropriate" | "spam" | "other";
+
+const flagReasonLabels: Record<PublicFlagReason, string> = {
+  copyright: "Copyright violation",
+  inappropriate: "Inappropriate content",
+  spam: "Spam",
+  other: "Other",
+};
+
+export class FramerCmsModerationService {
+  constructor(
+    private readonly config: FramerCmsConfig,
+    private readonly connector: FramerCmsConnector = defaultFramerCmsConnector,
+  ) {}
+
+  async flagPublishedRanking(input: {
+    slug: string;
+    reportId: string;
+    reason: PublicFlagReason;
+    createdAt: string;
+  }): Promise<"flagged" | "already_pending" | "not_found"> {
+    const {
+      FRAMER_API_TOKEN: token,
+      FRAMER_PROJECT_ID: projectId,
+      FRAMER_COLLECTION_ID: collectionId,
+    } = this.config;
+    if (!token || !projectId || !collectionId) throw new Error("Framer CMS is not configured.");
+    const connection = await this.connector(projectId, token);
+    try {
+      const collection = await connection.getCollection(collectionId);
+      if (!collection) throw cmsValidationError("Configured Framer collection not found.");
+      const [fields, items] = await Promise.all([collection.getFields(), collection.getItems()]);
+      const map = resolveFramerFieldMap(fields);
+      const item = items.find((candidate) => candidate.slug === input.slug && !candidate.draft);
+      if (!item?.fieldData) return "not_found";
+      const statusField = supportedField(fields, map.flagStatus);
+      const status = displayFieldValue(statusField, item.fieldData[map.flagStatus]?.value);
+      if (
+        typeof status === "string" &&
+        ["pending review", "confirmed violation"].includes(status.toLowerCase())
+      ) {
+        return "already_pending";
+      }
+      const fieldData = { ...item.fieldData } as FieldDataInput;
+      const updates: Partial<Record<FramerFieldKey, string | boolean>> = {
+        flagged: supportedField(fields, map.flagged).type === "boolean" ? true : "Yes",
+        flagStatus: "Pending Review",
+        flagReason: flagReasonLabels[input.reason],
+        flaggedAt: input.createdAt,
+        flagReportId: input.reportId,
+      };
+      for (const [key, value] of Object.entries(updates) as [FramerFieldKey, string | boolean][]) {
+        const field = supportedField(fields, map[key]);
+        fieldData[field.id] = fieldEntry(field, value);
+      }
+      await collection.addItems([{ id: item.id, slug: item.slug, fieldData, draft: false }]);
+      return "flagged";
+    } finally {
+      await connection.disconnect().catch(() => undefined);
+    }
+  }
 }
 
 export interface FramerCmsSyncResult {

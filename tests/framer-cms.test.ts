@@ -58,10 +58,12 @@ function fields(): CmsFieldDescriptor[] {
     id: `field-${index}-${key}`,
     name,
     type:
-      key === "test"
+      key === "test" || key === "flagged"
         ? "boolean"
-        : key === "genreDropdown"
+        : key === "genreDropdown" || key === "flagStatus" || key === "flagReason"
           ? "enum"
+          : key === "flaggedAt" || key === "flagReviewedAt"
+            ? "date"
           : key.endsWith("Score")
             ? "number"
             : key === "imdb" || key === "website"
@@ -74,7 +76,25 @@ function fields(): CmsFieldDescriptor[] {
             { id: "genre-comedy", name: "Comedy" },
           ],
         }
-      : {}),
+      : key === "flagStatus"
+        ? {
+            cases: [
+              { id: "flag-clear", name: "Clear" },
+              { id: "flag-pending", name: "Pending Review" },
+              { id: "flag-confirmed", name: "Confirmed Violation" },
+              { id: "flag-dismissed", name: "Dismissed" },
+            ],
+          }
+        : key === "flagReason"
+          ? {
+              cases: [
+                { id: "reason-copyright", name: "Copyright violation" },
+                { id: "reason-inappropriate", name: "Inappropriate content" },
+                { id: "reason-spam", name: "Spam" },
+                { id: "reason-other", name: "Other" },
+              ],
+            }
+          : {}),
   }));
 }
 

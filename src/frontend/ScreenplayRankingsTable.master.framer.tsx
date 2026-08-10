@@ -25,8 +25,10 @@ interface PublicRankingRecord {
   format: string;
   genre: string;
   imdbUrl: string | null;
+  websiteUrl: string | null;
   updatedAt: string | null;
   scores: RankingScores;
+  reportStatus: "clear" | "pending_review";
 }
 
 type SortDirection = "asc" | "desc";
@@ -57,6 +59,7 @@ interface ScreenplayRankingsTableProps {
   fontFamily?: string;
   uiFontFamily?: string;
   rowSpacing?: number;
+  turnstileSiteKey?: string;
   style?: React.CSSProperties;
 }
 
@@ -116,7 +119,9 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Half-Hour TV Pilot",
     genre: "Fantasy",
     imdbUrl: "https://www.imdb.com/",
+    websiteUrl: null,
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 9.1,
       premise: 9.2,
@@ -140,7 +145,9 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Hour TV Pilot",
     genre: "Sci-Fi",
     imdbUrl: null,
+    websiteUrl: "https://example.com/rowan-calloway",
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 9.0,
       premise: 8.8,
@@ -165,7 +172,9 @@ const SAMPLE_RECORDS: PublicRankingRecord[] = [
     format: "Feature",
     genre: "Dark Comedy",
     imdbUrl: null,
+    websiteUrl: null,
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 8.9,
       premise: 9.0,
@@ -245,8 +254,10 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
     format,
     genre,
     imdbUrl: nullableString(item["imdbUrl"]),
+    websiteUrl: nullableString(item["websiteUrl"]),
     updatedAt: nullableString(item["updatedAt"]),
     scores,
+    reportStatus: item["reportStatus"] === "pending_review" ? "pending_review" : "clear",
   };
 }
 
@@ -312,21 +323,7 @@ function parseResponse(value: unknown): PublicRankingsPage | null {
   };
 }
 
-function readQuery(defaultPageSize: PageSize): RankingsQuery {
-  if (typeof window === "undefined") {
-    return {
-      search: "",
-      format: "",
-      genre: "",
-      scoreKey: "overall",
-      minimumScore: null,
-      direction: "desc",
-      page: 1,
-      pageSize: defaultPageSize,
-    };
-  }
-
-  const parameters = new URLSearchParams(window.location.search);
+function readQuery(parameters: URLSearchParams, defaultPageSize: PageSize): RankingsQuery {
   const requestedScore = parameters.get("score");
   const requestedMinimum = Number(parameters.get("minScore"));
   const requestedPageSize = Number(parameters.get("pageSize"));
@@ -376,7 +373,8 @@ function ContactLink({
   record: PublicRankingRecord;
   profilePathPrefix: string;
 }) {
-  const href = record.imdbUrl ?? buildProfileUrl(profilePathPrefix, record.slug);
+  const href =
+    record.imdbUrl ?? record.websiteUrl ?? buildProfileUrl(profilePathPrefix, record.slug);
 
   return (
     <a
@@ -387,7 +385,9 @@ function ContactLink({
       aria-label={
         record.imdbUrl
           ? `Open ${record.writerName} on IMDb`
-          : `Open ${record.writerName} profile`
+          : record.websiteUrl
+            ? `Open ${record.writerName} professional website`
+            : `Open ${record.writerName} profile`
       }
     >
       {record.imdbUrl ? (
@@ -423,6 +423,65 @@ function ContactLink({
       )}
     </a>
   );
+}
+
+function FlagButton({ record, onReport }: { record: PublicRankingRecord; onReport: () => void }) {
+  const pending = record.reportStatus === "pending_review";
+  return (
+    <button
+      type="button"
+      className={`lr-flag${pending ? " is-pending" : ""}`}
+      disabled={pending}
+      aria-label={pending ? "Report pending review" : `Report ${record.scriptTitle}`}
+      title={pending ? "Pending review" : "Report this listing"}
+      onClick={onReport}
+    >
+      {pending ? "Flagged" : "⚑"}
+    </button>
+  );
+}
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render(
+        element: HTMLElement,
+        options: {
+          sitekey: string;
+          action: string;
+          callback: (token: string) => void;
+          "expired-callback": () => void;
+          "error-callback": () => void;
+          theme?: "auto" | "light" | "dark";
+        },
+      ): string;
+      reset(widgetId: string): void;
+      remove(widgetId: string): void;
+    };
+  }
+}
+
+function loadTurnstileScript(): Promise<void> {
+  if (window.turnstile) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(
+      'script[src*="turnstile/v0/api.js"]',
+    );
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error("Verification failed to load.")), {
+        once: true,
+      });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Verification failed to load."));
+    document.head.appendChild(script);
+  });
 }
 
 function EmptyState({ title, message }: { title: string; message: string }) {
@@ -505,7 +564,7 @@ function Pagination({
  */
 export default function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
   const {
-    apiBaseUrl = "https://api-staging.loglisted.com",
+    apiBaseUrl = "https://loglisted-production-canary-api.onrender.com",
     profilePathPrefix = "/loglist/",
     maxRows = 1000,
     backgroundColor = "#EEE3D2",
@@ -518,6 +577,7 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
     fontFamily = "Cutive, Georgia, serif",
     uiFontFamily = "Arial, sans-serif",
     rowSpacing = 18,
+    turnstileSiteKey = "",
     style,
   } = props;
 
@@ -536,8 +596,22 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
   const [loading, setLoading] = React.useState(!canvasMode);
 
   const [error, setError] = React.useState<string | null>(null);
+  const [reportingRecord, setReportingRecord] = React.useState<PublicRankingRecord | null>(null);
+  const [reportReason, setReportReason] = React.useState("copyright");
+  const [reportDetails, setReportDetails] = React.useState("");
+  const [reportError, setReportError] = React.useState<string | null>(null);
+  const [reportSubmitting, setReportSubmitting] = React.useState(false);
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(null);
+  const turnstileContainerRef = React.useRef<HTMLDivElement>(null);
+  const turnstileWidgetRef = React.useRef<string | null>(null);
 
-  const [query, setQuery] = React.useState<RankingsQuery>(() => readQuery(defaultPageSize));
+  // Framer server-renders code components before hydrating them in the
+  // browser. Start from the same query on both sides, then restore URL state
+  // after hydration so React does not discard the server-rendered component.
+  const [query, setQuery] = React.useState<RankingsQuery>(() =>
+    readQuery(new URLSearchParams(), defaultPageSize),
+  );
+  const [browserReady, setBrowserReady] = React.useState(canvasMode);
 
   const stickyControlsRef = React.useRef<HTMLDivElement>(null);
   const [stickyControlsHeight, setStickyControlsHeight] = React.useState(142);
@@ -559,7 +633,14 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
   }, []);
 
   React.useEffect(() => {
-    if (canvasMode) {
+    if (canvasMode) return;
+
+    setQuery(readQuery(new URLSearchParams(window.location.search), defaultPageSize));
+    setBrowserReady(true);
+  }, [canvasMode]);
+
+  React.useEffect(() => {
+    if (canvasMode || !browserReady) {
       return;
     }
 
@@ -614,10 +695,23 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
       window.clearTimeout(delay);
       controller.abort();
     };
-  }, [apiBaseUrl, canvasMode, query]);
+  }, [apiBaseUrl, browserReady, canvasMode, query]);
 
   React.useEffect(() => {
-    if (canvasMode || typeof window === "undefined") {
+    if (canvasMode || !browserReady || typeof window === "undefined") {
+      return;
+    }
+
+    const restoreQueryFromHistory = () => {
+      setQuery(readQuery(new URLSearchParams(window.location.search), defaultPageSize));
+    };
+
+    window.addEventListener("popstate", restoreQueryFromHistory);
+    return () => window.removeEventListener("popstate", restoreQueryFromHistory);
+  }, [browserReady, canvasMode]);
+
+  React.useEffect(() => {
+    if (canvasMode || !browserReady || typeof window === "undefined") {
       return;
     }
 
@@ -648,11 +742,94 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
     const queryString = parameters.toString();
 
     window.history.replaceState(
-      null,
+      window.history.state,
       "",
       `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`,
     );
-  }, [query, canvasMode]);
+  }, [query, browserReady, canvasMode]);
+
+  React.useEffect(() => {
+    if (!reportingRecord || canvasMode || !turnstileSiteKey || !turnstileContainerRef.current)
+      return;
+    let cancelled = false;
+    void loadTurnstileScript()
+      .then(() => {
+        if (cancelled || !window.turnstile || !turnstileContainerRef.current) return;
+        turnstileWidgetRef.current = window.turnstile.render(turnstileContainerRef.current, {
+          sitekey: turnstileSiteKey,
+          action: "ranking_report",
+          callback: (token: string) => setTurnstileToken(token),
+          "expired-callback": () => setTurnstileToken(null),
+          "error-callback": () => setReportError("Verification could not be completed."),
+        });
+      })
+      .catch(() => setReportError("Verification could not be loaded."));
+    return () => {
+      cancelled = true;
+      const id = turnstileWidgetRef.current;
+      if (id && window.turnstile) {
+        try {
+          window.turnstile.remove(id);
+        } catch {
+          /* Widget already removed. */
+        }
+      }
+      turnstileWidgetRef.current = null;
+      setTurnstileToken(null);
+    };
+  }, [reportingRecord, canvasMode, turnstileSiteKey]);
+
+  async function submitReport(event: React.FormEvent) {
+    event.preventDefault();
+    if (!reportingRecord || !turnstileToken) {
+      setReportError("Complete the verification before submitting.");
+      return;
+    }
+    setReportSubmitting(true);
+    setReportError(null);
+    try {
+      let deviceId = window.localStorage.getItem("loglisted_device_id");
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        window.localStorage.setItem("loglisted_device_id", deviceId);
+      }
+      const base = apiBaseUrl.replace(/\/$/, "");
+      const sessionResponse = await fetch(`${base}/api/session`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId }),
+      });
+      const session = (await sessionResponse.json()) as { csrfToken?: string };
+      if (!sessionResponse.ok || !session.csrfToken)
+        throw new Error("A secure reporting session could not be created.");
+      const response = await fetch(`${base}/api/rankings/report`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json", "x-csrf-token": session.csrfToken },
+        body: JSON.stringify({
+          rankingSlug: reportingRecord.slug,
+          reason: reportReason,
+          details: reportDetails,
+          turnstileToken,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as { error?: { message?: string } };
+      if (!response.ok)
+        throw new Error(payload.error?.message ?? "The report could not be submitted.");
+      setRecords((current) =>
+        current.map((record) =>
+          record.id === reportingRecord.id ? { ...record, reportStatus: "pending_review" } : record,
+        ),
+      );
+      setReportingRecord(null);
+      setReportDetails("");
+    } catch (cause) {
+      setReportError(cause instanceof Error ? cause.message : "The report could not be submitted.");
+    } finally {
+      setReportSubmitting(false);
+    }
+  }
 
   const formats = canvasMode
     ? Array.from(new Set(records.map((record) => record.format).filter(Boolean))).sort()
@@ -944,7 +1121,10 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
                     <td className="lr-score">{formatScore(record.scores[query.scoreKey])}</td>
 
                     <td>
-                      <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
+                      <div className="lr-row-actions">
+                        <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
+                        <FlagButton record={record} onReport={() => setReportingRecord(record)} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -982,7 +1162,10 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
 
                     <dt>Contact</dt>
                     <dd>
-                      <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
+                      <div className="lr-row-actions">
+                        <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
+                        <FlagButton record={record} onReport={() => setReportingRecord(record)} />
+                      </div>
                     </dd>
                   </dl>
                 </div>
@@ -997,6 +1180,73 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
             onPageChange={(page) => updateQuery({ page }, false)}
             onPageSizeChange={(pageSize) => updateQuery({ pageSize })}
           />
+          {reportingRecord ? (
+            <div
+              className="lr-dialog-backdrop"
+              role="presentation"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) setReportingRecord(null);
+              }}
+            >
+              <div
+                className="lr-dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="lr-report-title"
+              >
+                <button
+                  type="button"
+                  className="lr-dialog-close"
+                  aria-label="Close report dialog"
+                  onClick={() => setReportingRecord(null)}
+                >
+                  ×
+                </button>
+                <h2 id="lr-report-title">Report this listing</h2>
+                <p>
+                  Report “{reportingRecord.scriptTitle}” for manual review. Do not include private
+                  or sensitive information.
+                </p>
+                <form
+                  onSubmit={(event) => {
+                    void submitReport(event);
+                  }}
+                >
+                  <label htmlFor="lr-report-reason">Reason</label>
+                  <select
+                    id="lr-report-reason"
+                    value={reportReason}
+                    onChange={(event) => setReportReason(event.target.value)}
+                  >
+                    <option value="copyright">Copyright violation</option>
+                    <option value="inappropriate">Inappropriate content</option>
+                    <option value="spam">Spam</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <label htmlFor="lr-report-details">Additional details (optional)</label>
+                  <textarea
+                    id="lr-report-details"
+                    maxLength={500}
+                    value={reportDetails}
+                    onChange={(event) => setReportDetails(event.target.value)}
+                  />
+                  <div ref={turnstileContainerRef} className="lr-report-turnstile" />
+                  {reportError ? (
+                    <p className="lr-report-error" role="alert">
+                      ! {reportError}
+                    </p>
+                  ) : null}
+                  <button
+                    type="submit"
+                    className="lr-report-submit"
+                    disabled={reportSubmitting || !turnstileToken}
+                  >
+                    {reportSubmitting ? "Submitting…" : "Submit report"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : null}
         </>
       )}
     </section>
@@ -1011,7 +1261,7 @@ addPropertyControls(ScreenplayRankingsTable, {
   apiBaseUrl: {
     type: ControlType.String,
     title: "API URL",
-    defaultValue: "https://api-staging.loglisted.com",
+    defaultValue: "https://loglisted-production-canary-api.onrender.com",
   },
   profilePathPrefix: {
     type: ControlType.String,
@@ -1073,6 +1323,11 @@ addPropertyControls(ScreenplayRankingsTable, {
     min: 10,
     max: 36,
     step: 1,
+  },
+  turnstileSiteKey: {
+    type: ControlType.String,
+    title: "Turnstile Key",
+    defaultValue: "",
   },
 });
 
@@ -1741,4 +1996,22 @@ const STYLES = `
         transition: none !important;
     }
 }
+
+.lr-row-actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.lr-flag { min-width: 38px; min-height: 38px; border: 1px solid var(--lr-accent); border-radius: 6px; background: transparent; color: var(--lr-accent); cursor: pointer; font: 700 15px var(--lr-ui-font); }
+.lr-flag.is-pending { border-color: var(--lr-gold); color: #76561f; cursor: default; font-size: 11px; }
+.lr-dialog-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 20px; background: rgba(9,11,11,.72); }
+.lr-dialog { position: relative; width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 28px; border: 1px solid var(--lr-gold); border-radius: 10px; background: var(--lr-background); color: var(--lr-text); box-shadow: 0 16px 50px rgba(0,0,0,.28); }
+.lr-dialog h2 { margin: 0 36px 10px 0; font: 28px/1.2 var(--lr-font); }
+.lr-dialog p { line-height: 1.55; }
+.lr-dialog form { display: grid; gap: 10px; }
+.lr-dialog label { margin-top: 8px; font: 700 11px/1.3 var(--lr-ui-font); text-transform: uppercase; letter-spacing: .08em; }
+.lr-dialog select, .lr-dialog textarea { box-sizing: border-box; width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--lr-border); border-radius: 6px; background-color: #f8eedf; color: var(--lr-text); font: 14px/1.4 var(--lr-font); }
+.lr-dialog select { appearance: none; -webkit-appearance: none; padding-right: 44px; background-image: linear-gradient(45deg, transparent 50%, #5d554b 50%), linear-gradient(135deg, #5d554b 50%, transparent 50%); background-position: calc(100% - 20px) calc(50% - 2px), calc(100% - 14px) calc(50% - 2px); background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
+.lr-dialog textarea { min-height: 100px; resize: vertical; }
+.lr-dialog-close { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--lr-text); cursor: pointer; font: 400 38px/1 var(--lr-ui-font); }
+.lr-report-submit { min-height: 48px; padding: 12px 18px; border: 1px solid var(--lr-accent); border-radius: 6px; background: var(--lr-accent); color: white; cursor: pointer; font: 700 15px var(--lr-ui-font); }
+.lr-report-submit:disabled { cursor: not-allowed; opacity: .55; }
+.lr-report-error { color: #9d2f24; font-weight: 700; }
+.lr-report-turnstile { min-height: 66px; margin-top: 8px; }
 `;

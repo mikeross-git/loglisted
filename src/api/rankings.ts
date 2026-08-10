@@ -39,7 +39,7 @@ export async function getPublicRankings(
 ): Promise<Response> {
   try {
     return Response.json(await reader.getPublicRankings(parseRankingsQuery(parameters)), {
-      headers: { "cache-control": "public, max-age=60, stale-while-revalidate=300" },
+      headers: { "cache-control": "private, no-store" },
     });
   } catch (error) {
     const status =

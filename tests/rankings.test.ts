@@ -20,14 +20,25 @@ function fields(): CmsFieldDescriptor[] {
     id: `${index}-${key}`,
     name,
     type:
-      key === "genreDropdown"
+      key === "genreDropdown" || key === "flagStatus" || key === "flagReason"
         ? "enum"
         : key.endsWith("Score")
           ? "number"
           : key === "showOnLoglist"
             ? "boolean"
             : "string",
-    ...(key === "genreDropdown" ? { cases: [{ id: "comedy", name: "Comedy" }] } : {}),
+    ...(key === "genreDropdown"
+      ? { cases: [{ id: "comedy", name: "Comedy" }] }
+      : key === "flagStatus"
+        ? {
+            cases: [
+              { id: "clear", name: "Clear" },
+              { id: "pending", name: "Pending Review" },
+            ],
+          }
+        : key === "flagReason"
+          ? { cases: [{ id: "copyright", name: "Copyright violation" }] }
+          : {}),
   }));
 }
 
@@ -48,6 +59,7 @@ function fieldData(email: string, overall: number, showOnLoglist = true) {
     [fieldId("imdb")]: { type: "link", value: "https://www.imdb.com/name/nm0000001/" },
     [fieldId("website")]: { type: "link", value: "https://writer.example.com/" },
     [fieldId("showOnLoglist")]: { type: "boolean", value: showOnLoglist },
+    [fieldId("flagStatus")]: { type: "enum", value: "clear" },
   };
   for (const key of [
     "overallScore",

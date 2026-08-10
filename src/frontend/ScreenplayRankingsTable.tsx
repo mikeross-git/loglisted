@@ -81,6 +81,7 @@ const sampleRecords: PublicRankingRecord[] = [
     imdbUrl: "https://www.imdb.com/",
     websiteUrl: null,
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 9.1,
       premise: 9.2,
@@ -106,6 +107,7 @@ const sampleRecords: PublicRankingRecord[] = [
     imdbUrl: null,
     websiteUrl: "https://example.com/rowan-calloway",
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 9,
       premise: 8.8,
@@ -132,6 +134,7 @@ const sampleRecords: PublicRankingRecord[] = [
     imdbUrl: null,
     websiteUrl: null,
     updatedAt: null,
+    reportStatus: "clear",
     scores: {
       overall: 8.9,
       premise: 9,
@@ -268,6 +271,7 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
   const imdbUrl = item["imdbUrl"];
   const websiteUrl = item["websiteUrl"];
   const updatedAt = item["updatedAt"];
+  const reportStatus = item["reportStatus"] === "pending_review" ? "pending_review" : "clear";
   if (
     typeof id !== "string" ||
     typeof slug !== "string" ||
@@ -292,6 +296,7 @@ function parseRecord(value: unknown): PublicRankingRecord | null {
     imdbUrl,
     websiteUrl,
     updatedAt,
+    reportStatus,
     scores,
   };
 }
@@ -338,14 +343,23 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(!canvasMode);
   const [error, setError] = useState<string | null>(null);
+  // Keep the server render and the browser's first render identical. Reading
+  // window.location during initialization makes Framer hydrate different HTML
+  // whenever a rankings query string is present.
   const [query, setQuery] = useState<RankingsQuery>(() =>
-    typeof window === "undefined"
-      ? queryFromSearchParams(new URLSearchParams(), initialPageSize)
-      : queryFromSearchParams(new URLSearchParams(window.location.search), initialPageSize),
+    queryFromSearchParams(new URLSearchParams(), initialPageSize),
   );
+  const [browserReady, setBrowserReady] = useState(canvasMode);
 
   useEffect(() => {
     if (canvasMode) return;
+
+    setQuery(queryFromSearchParams(new URLSearchParams(window.location.search), initialPageSize));
+    setBrowserReady(true);
+  }, [canvasMode, initialPageSize]);
+
+  useEffect(() => {
+    if (canvasMode || !browserReady) return;
     const controller = new AbortController();
     setLoading(true);
     setError(null);
@@ -378,10 +392,21 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
       window.clearTimeout(delay);
       controller.abort();
     };
-  }, [apiBaseUrl, canvasMode, query]);
+  }, [apiBaseUrl, browserReady, canvasMode, query]);
 
   useEffect(() => {
-    if (canvasMode || typeof window === "undefined") return;
+    if (canvasMode || !browserReady || typeof window === "undefined") return;
+
+    const restoreQueryFromHistory = () => {
+      setQuery(queryFromSearchParams(new URLSearchParams(window.location.search), initialPageSize));
+    };
+
+    window.addEventListener("popstate", restoreQueryFromHistory);
+    return () => window.removeEventListener("popstate", restoreQueryFromHistory);
+  }, [browserReady, canvasMode, initialPageSize]);
+
+  useEffect(() => {
+    if (canvasMode || !browserReady || typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const set = (key: string, value: string) =>
       value ? params.set(key, value) : params.delete(key);
@@ -394,11 +419,11 @@ export function ScreenplayRankingsTable(props: ScreenplayRankingsTableProps) {
     set("page", query.page === 1 ? "" : String(query.page));
     set("pageSize", query.pageSize === initialPageSize ? "" : String(query.pageSize));
     window.history.replaceState(
-      null,
+      window.history.state,
       "",
       `${window.location.pathname}${params.size ? `?${params}` : ""}${window.location.hash}`,
     );
-  }, [query, canvasMode, initialPageSize]);
+  }, [query, browserReady, canvasMode, initialPageSize]);
 
   const formats = canvasMode
     ? [...new Set(records.map((record) => record.format).filter(Boolean))].sort()

@@ -85,6 +85,10 @@ export class FramerRankingsReader {
     );
   }
 
+  invalidateCache(): void {
+    this.cached = undefined;
+  }
+
   async getPublicRankings(
     query: PublicRankingsQuery = defaultQuery,
   ): Promise<PublicRankingsResponse> {
@@ -113,6 +117,10 @@ export class FramerRankingsReader {
       const map = resolveFramerFieldMap(fields);
       const genreField = fields.find((field) => field.id === map.genreDropdown);
       const enumNames = new Map(genreField?.cases?.map((item) => [item.id, item.name]) ?? []);
+      const flagStatusField = fields.find((field) => field.id === map.flagStatus);
+      const flagStatusNames = new Map(
+        flagStatusField?.cases?.map((item) => [item.id, item.name]) ?? [],
+      );
       const genreCategoryField = fields.find((field) => field.id === map.genreCategory);
       const genreReferenceNames = new Map<string, string>();
       if (genreCategoryField?.type === "collectionReference" && genreCategoryField.collectionId) {
@@ -181,6 +189,9 @@ export class FramerRankingsReader {
             websiteUrl: websiteValue(value(map.website)),
             scores,
             updatedAt: item.updatedAt ?? null,
+            reportStatus: moderationStatus(
+              flagStatusNames.get(textValue(value(map.flagStatus))) ?? value(map.flagStatus),
+            ),
           };
         })
         .filter((item): item is PublicRankingRecord => item !== null);
@@ -196,6 +207,12 @@ export class FramerRankingsReader {
       await connection.disconnect().catch(() => undefined);
     }
   }
+}
+
+function moderationStatus(value: unknown): "clear" | "pending_review" {
+  return typeof value === "string" && value.toLowerCase() === "pending review"
+    ? "pending_review"
+    : "clear";
 }
 
 function valueIsEnabled(value: unknown): boolean {
