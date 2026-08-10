@@ -473,6 +473,15 @@ export function createProductionApp(
           retentionSeconds: validated.MODERATION_REPORT_RETENTION_DAYS * 86_400,
           sessionDailyLimit: validated.MODERATION_REPORTS_PER_SESSION_PER_DAY,
           ipDailyLimit: validated.MODERATION_REPORTS_PER_IP_PER_DAY,
+          onRejection: ({ stage, errorClass, status, reasonCode }) => {
+            logger.warn("production.ranking_report_rejected", {
+              processingStage: stage,
+              errorClass,
+              status,
+              environment: "production",
+              ...(reasonCode ? { reasonCode } : {}),
+            });
+          },
         }),
         response,
       );

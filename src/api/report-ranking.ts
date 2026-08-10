@@ -40,6 +40,24 @@ export interface ReportRankingDependencies {
   retentionSeconds: number;
   sessionDailyLimit: number;
   ipDailyLimit: number;
+  onRejection?: (diagnostic: RankingReportRejectionDiagnostic) => void;
+}
+
+export type RankingReportStage =
+  | "origin"
+  | "session"
+  | "csrf"
+  | "input"
+  | "rate_limit"
+  | "turnstile"
+  | "reservation"
+  | "cms";
+
+export interface RankingReportRejectionDiagnostic {
+  stage: RankingReportStage;
+  errorClass: string;
+  status: number;
+  reasonCode?: string;
 }
 
 function digest(secret: string, value: string): string {
@@ -51,17 +69,22 @@ export async function postRankingReport(
   dependencies: ReportRankingDependencies,
 ): Promise<Response> {
   let origin: string | undefined;
+  let stage: RankingReportStage = "origin";
   try {
     ({ origin } = validateSiteOrigin(request, dependencies.originPolicy));
+    stage = "session";
     const session = dependencies.sessions.parseCookieHeader(request.headers.get("cookie"));
+    stage = "csrf";
     validateCsrfToken(
       request.headers.get("x-csrf-token"),
       dependencies.csrfSigningSecret,
       session.anonymousSessionId,
       session.csrfSecret,
     );
+    stage = "input";
     const input = ReportRequestSchema.parse(await request.json());
     const ipHash = hashIp(dependencies.directIp, dependencies.ipHmacSecret);
+    stage = "rate_limit";
     await dependencies.rateLimiter.check(
       `moderation:session:${session.anonymousSessionId}`,
       dependencies.sessionDailyLimit,
@@ -72,9 +95,11 @@ export async function postRankingReport(
       dependencies.ipDailyLimit,
       86_400_000,
     );
+    stage = "turnstile";
     await dependencies.turnstile.verify(input.turnstileToken);
     const reportId = randomUUID();
     const createdAt = new Date().toISOString();
+    stage = "reservation";
     const reserved = await dependencies.store.reserve(
       {
         version: 1,
@@ -95,6 +120,7 @@ export async function postRankingReport(
     );
     if (!reserved) throw new RateLimitError("This screenplay is already pending review.");
     try {
+      stage = "cms";
       const outcome = await dependencies.cms.flagPublishedRanking({
         slug: input.rankingSlug,
         reportId,
@@ -126,6 +152,18 @@ export async function postRankingReport(
   } catch (error) {
     const status =
       error instanceof z.ZodError ? 400 : error instanceof AppError ? error.statusCode : 502;
+    try {
+      dependencies.onRejection?.({
+        stage,
+        errorClass: error instanceof Error ? error.name : "UnknownError",
+        status,
+        ...(error instanceof AppError && typeof error.details?.["reasonCode"] === "string"
+          ? { reasonCode: error.details["reasonCode"] }
+          : {}),
+      });
+    } catch {
+      // Diagnostics must never change the public report response.
+    }
     const message =
       status === 429
         ? "This report cannot be submitted again right now."

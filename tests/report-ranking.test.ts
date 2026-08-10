@@ -90,4 +90,22 @@ describe("ranking reports", () => {
     ).toBe(429);
     expect(cms.flagPublishedRanking).toHaveBeenCalledTimes(1);
   });
+
+  it("reports the safe rejection stage without exposing request data", async () => {
+    const { created, dependencies } = setup();
+    const onRejection = vi.fn();
+    const response = await postRankingReport(request(created.cookie, "invalid"), {
+      ...dependencies,
+      onRejection,
+    });
+
+    expect(response.status).toBe(403);
+    expect(onRejection).toHaveBeenCalledWith({
+      stage: "csrf",
+      errorClass: "AuthorizationError",
+      status: 403,
+    });
+    expect(JSON.stringify(onRejection.mock.calls)).not.toContain("sample-script");
+    expect(JSON.stringify(onRejection.mock.calls)).not.toContain("invalid");
+  });
 });
