@@ -134,6 +134,25 @@ describe("Framer CMS integration", () => {
     expect(item.draft).toBe(false);
   });
 
+  it("supports a Yes/No enum for Show on Loglist", () => {
+    const enumFields = fields().map((field) =>
+      field.name === "Show on Loglist"
+        ? {
+            ...field,
+            type: "enum",
+            cases: [
+              { id: "show-yes", name: "Yes" },
+              { id: "show-no", name: "No" },
+            ],
+          }
+        : field,
+    );
+    const item = buildFramerCmsItem(result, enumFields, "draft");
+    const showField = enumFields.find((field) => field.name === "Show on Loglist");
+    if (!showField) throw new Error("Show on Loglist test field is missing.");
+    expect(item.fieldData[showField.id]).toEqual({ type: "enum", value: "show-yes" });
+  });
+
   it("writes Genre Category as a Framer collection reference when configured that way", () => {
     const referenceFields = fields().map((field) =>
       field.name === "Genre Category"

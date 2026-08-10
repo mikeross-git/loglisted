@@ -255,6 +255,7 @@ export function buildFramerCmsItem(
   const logline = result.internal.submissionLogline?.trim();
   const imdbUrl = contact.imdbUrl?.trim();
   const websiteUrl = contact.websiteUrl?.trim();
+  const showOnLoglistField = supportedField(fields, map.showOnLoglist);
   const values: Record<FramerFieldKey, string | number | boolean | undefined> = {
     writerName,
     email: contact.email,
@@ -276,7 +277,7 @@ export function buildFramerCmsItem(
     genreDropdown: result.declaredGenre.trim(),
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     website: websiteUrl === "" ? undefined : websiteUrl,
-    showOnLoglist: true,
+    showOnLoglist: showOnLoglistField.type === "boolean" ? true : "Yes",
     format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
   };
   const fieldData: FieldDataInput = {};
