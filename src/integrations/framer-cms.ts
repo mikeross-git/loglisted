@@ -55,6 +55,7 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   imdb: "IMDB",
   website: "Professional Website",
   showOnLoglist: "Show on Loglist",
+  searchIndex: "Search Index",
   format: "Format",
 });
 
@@ -256,6 +257,11 @@ export function buildFramerCmsItem(
   const imdbUrl = contact.imdbUrl?.trim();
   const websiteUrl = contact.websiteUrl?.trim();
   const showOnLoglistField = supportedField(fields, map.showOnLoglist);
+  const formatLabel = formatLabels[result.declaredFormat] ?? result.declaredFormat;
+  const genre = result.declaredGenre.trim();
+  const searchIndex = [writerName, scriptTitle, logline, formatLabel, genre]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
   const values: Record<FramerFieldKey, string | number | boolean | undefined> = {
     writerName,
     email: contact.email,
@@ -273,12 +279,13 @@ export function buildFramerCmsItem(
     toneScore: result.categoryScores.tone,
     marketabilityScore: result.categoryScores.marketability,
     craftScore: result.categoryScores.craft,
-    genreCategory: referenceValues.genreCategory ?? result.declaredGenre.trim(),
-    genreDropdown: result.declaredGenre.trim(),
+    genreCategory: referenceValues.genreCategory ?? genre,
+    genreDropdown: genre,
     imdb: imdbUrl === "" ? undefined : imdbUrl,
     website: websiteUrl === "" ? undefined : websiteUrl,
     showOnLoglist: showOnLoglistField.type === "boolean" ? true : "Yes",
-    format: formatLabels[result.declaredFormat] ?? result.declaredFormat,
+    searchIndex,
+    format: formatLabel,
   };
   const fieldData: FieldDataInput = {};
   for (const [key, value] of Object.entries(values) as [

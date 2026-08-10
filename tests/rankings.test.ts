@@ -46,6 +46,7 @@ function fieldData(email: string, overall: number, showOnLoglist = true) {
     [fieldId("format")]: { type: "string", value: "Feature" },
     [fieldId("genreDropdown")]: { type: "enum", value: "comedy" },
     [fieldId("imdb")]: { type: "link", value: "https://www.imdb.com/name/nm0000001/" },
+    [fieldId("website")]: { type: "link", value: "https://writer.example.com/" },
     [fieldId("showOnLoglist")]: { type: "boolean", value: showOnLoglist },
   };
   for (const key of [
@@ -176,7 +177,11 @@ describe("public screenplay rankings", () => {
     const response = await instance.getPublicRankings();
     expect(response.records).toHaveLength(1);
     expect(response).toMatchObject({ version: 2, page: 1, pageSize: 25, totalRecords: 1 });
-    expect(response.records[0]).toMatchObject({ genre: "Comedy", scores: { overall: 10 } });
+    expect(response.records[0]).toMatchObject({
+      genre: "Comedy",
+      websiteUrl: "https://writer.example.com/",
+      scores: { overall: 10 },
+    });
     expect(JSON.stringify(response)).not.toContain("private@example.com");
   });
 

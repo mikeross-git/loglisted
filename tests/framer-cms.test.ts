@@ -102,6 +102,9 @@ describe("Framer CMS integration", () => {
     expect(fieldValue(item, "genreDropdown")).toBe("genre-comedy");
     expect(fieldValue(item, "logline")).toBe(result.internal.submissionLogline);
     expect(fieldValue(item, "website")).toBe("https://janedoe.example.com/");
+    expect(fieldValue(item, "searchIndex")).toBe(
+      "Jané Doe The Example A writer tests a secure CMS integration. Half-Hour TV Pilot Comedy",
+    );
     expect(fieldValue(item, "overallScore")).toBe(7.6);
     for (const scoreKey of Object.keys(result.categoryScores)) {
       expect(fieldValue(item, `${scoreKey}Score`)).toBe(
