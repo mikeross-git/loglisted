@@ -3,6 +3,7 @@ import type { CollectionItemInput } from "framer-api";
 import {
   FRAMER_FIELD_DISPLAY_NAMES,
   FramerCmsSynchronizer,
+  FramerCmsModerationService,
   buildFramerCmsItem,
   loadFramerCmsConfig,
   resolveFramerFieldMap,
@@ -64,11 +65,11 @@ function fields(): CmsFieldDescriptor[] {
           ? "enum"
           : key === "flaggedAt" || key === "flagReviewedAt"
             ? "date"
-          : key.endsWith("Score")
-            ? "number"
-            : key === "imdb" || key === "website"
-              ? "link"
-              : "string",
+            : key.endsWith("Score")
+              ? "number"
+              : key === "imdb" || key === "website"
+                ? "link"
+                : "string",
     ...(key === "genreDropdown"
       ? {
           cases: [
@@ -131,6 +132,83 @@ describe("Framer CMS integration", () => {
         result.categoryScores[scoreKey as keyof typeof result.categoryScores],
       );
     }
+  });
+
+  it("maps moderation reports to the live CMS enum labels", async () => {
+    const liveFields = fields().map((field) =>
+      field.name === "Flagged"
+        ? {
+            ...field,
+            type: "enum",
+            cases: [
+              { id: "flag-no", name: "No" },
+              { id: "flag-violation", name: "Yes - Violation" },
+              { id: "flag-deletion", name: "Yes - Deletion" },
+            ],
+          }
+        : field.name === "Flag Reason"
+          ? {
+              ...field,
+              cases: [
+                { id: "reason-none", name: "None" },
+                { id: "reason-copyright", name: "Copyright" },
+                { id: "reason-inappropriate", name: "Inappropriate Content" },
+                { id: "reason-spam", name: "Spam" },
+                { id: "reason-other", name: "Other" },
+              ],
+            }
+          : field,
+    );
+    const fieldMap = resolveFramerFieldMap(liveFields);
+    const added: CollectionItemInput[][] = [];
+    const connector = vi.fn(() =>
+      Promise.resolve({
+        getCollection: () =>
+          Promise.resolve({
+            getFields: () => Promise.resolve(liveFields),
+            getItems: () =>
+              Promise.resolve([
+                {
+                  id: "node-1",
+                  slug: "sample-script-12345678",
+                  draft: false,
+                  fieldData: {
+                    [fieldMap.writerName]: { type: "string", value: "Jane Doe" },
+                    [fieldMap.scriptTitle]: { type: "string", value: "Sample Script" },
+                    [fieldMap.flagStatus]: { type: "enum", value: "flag-clear" },
+                  },
+                },
+              ]),
+            addItems: (items: CollectionItemInput[]) => {
+              added.push(items);
+              return Promise.resolve();
+            },
+          }),
+        disconnect: () => Promise.resolve(),
+      }),
+    );
+    const service = new FramerCmsModerationService(
+      {
+        FRAMER_CMS_SYNC_ENABLED: true,
+        FRAMER_CMS_PUBLISH_MODE: "published",
+        FRAMER_API_TOKEN: "token",
+        FRAMER_PROJECT_ID: "project",
+        FRAMER_COLLECTION_ID: "collection",
+      },
+      connector,
+    );
+
+    expect(
+      await service.flagPublishedRanking({
+        slug: "sample-script-12345678",
+        reportId: "report-1",
+        reason: "copyright",
+        createdAt: "2026-08-11T00:00:00.000Z",
+      }),
+    ).toBe("flagged");
+    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagged]?.value).toBe("flag-violation");
+    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagReason]?.value).toBe("reason-copyright");
+    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagStatus]?.value).toBe("flag-pending");
   });
 
   it("uses No for production and omits empty optional fields", () => {

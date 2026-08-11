@@ -327,11 +327,28 @@ export function buildFramerCmsItem(
 export type PublicFlagReason = "copyright" | "inappropriate" | "spam" | "other";
 
 const flagReasonLabels: Record<PublicFlagReason, string> = {
-  copyright: "Copyright violation",
+  copyright: "Copyright",
   inappropriate: "Inappropriate content",
   spam: "Spam",
   other: "Other",
 };
+
+function pendingFlagValue(
+  field: CmsFieldDescriptor & { type: SupportedFieldType },
+): boolean | string {
+  if (field.type === "boolean") return true;
+  if (field.type !== "enum") {
+    throw cmsValidationError(`Framer CMS field "${field.name}" must be a boolean or enum.`);
+  }
+  const preferredNames = ["Yes - Violation", "Pending Review", "Yes", "Flagged"];
+  const match = preferredNames.find((name) =>
+    field.cases?.some((candidate) => candidate.name.toLowerCase() === name.toLowerCase()),
+  );
+  if (!match) {
+    throw cmsValidationError(`Framer enum field "${field.name}" lacks a pending flag value.`);
+  }
+  return match;
+}
 
 export class FramerCmsModerationService {
   constructor(
@@ -368,8 +385,9 @@ export class FramerCmsModerationService {
         return "already_pending";
       }
       const fieldData = { ...item.fieldData } as FieldDataInput;
+      const flaggedField = supportedField(fields, map.flagged);
       const updates: Partial<Record<FramerFieldKey, string | boolean>> = {
-        flagged: supportedField(fields, map.flagged).type === "boolean" ? true : "Yes",
+        flagged: pendingFlagValue(flaggedField),
         flagStatus: "Pending Review",
         flagReason: flagReasonLabels[input.reason],
         flaggedAt: input.createdAt,
