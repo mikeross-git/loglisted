@@ -48,6 +48,7 @@ describe("mock LLM provider", () => {
       UPLOAD_TOKEN_SIGNING_SECRET: "u".repeat(32),
       TURNSTILE_SITE_KEY: "site",
       TURNSTILE_SECRET_KEY: "secret",
+      REPORT_TURNSTILE_SECRET_KEY: "report-secret",
       TURNSTILE_EXPECTED_HOSTNAME: "site.example",
       TURNSTILE_EXPECTED_ACTION: "screenplay_upload",
       LLM_PROVIDER: "mock",

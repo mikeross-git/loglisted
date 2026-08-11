@@ -43,6 +43,7 @@ function productionEnvironment(
     UPLOAD_TOKEN_SIGNING_SECRET: "u".repeat(32),
     TURNSTILE_SITE_KEY: "turnstile-site-key",
     TURNSTILE_SECRET_KEY: "turnstile-secret-key",
+    REPORT_TURNSTILE_SECRET_KEY: "turnstile-report-secret-key",
     TURNSTILE_EXPECTED_HOSTNAME: "www.loglisted.com",
     TURNSTILE_EXPECTED_ACTION: "screenplay_upload",
     STORAGE_DRIVER: "redis",

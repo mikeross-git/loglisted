@@ -12,6 +12,7 @@ const validEnvironment = {
   UPLOAD_TOKEN_SIGNING_SECRET: "b".repeat(32),
   TURNSTILE_SITE_KEY: "test-site-key",
   TURNSTILE_SECRET_KEY: "test-secret-key",
+  REPORT_TURNSTILE_SECRET_KEY: "test-report-secret-key",
   TURNSTILE_EXPECTED_HOSTNAME: "localhost",
   TURNSTILE_EXPECTED_ACTION: "screenplay_upload",
   STORAGE_DRIVER: "memory",

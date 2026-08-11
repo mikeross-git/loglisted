@@ -304,7 +304,7 @@ export function createProductionApp(
       : {}),
   });
   const reportTurnstile = new TurnstileVerifier(abuseStore, {
-    secretKey: validated.TURNSTILE_SECRET_KEY,
+    secretKey: validated.REPORT_TURNSTILE_SECRET_KEY,
     expectedHostnames: [validated.TURNSTILE_EXPECTED_HOSTNAME],
     expectedAction: validated.REPORT_TURNSTILE_EXPECTED_ACTION,
     ...(options.turnstileFetchImplementation

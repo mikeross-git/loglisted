@@ -73,6 +73,7 @@ export const ConfigSchema = z
     GLOBAL_ANALYSES_PER_MINUTE: z.coerce.number().int().positive().default(10),
     TURNSTILE_SITE_KEY: z.string().min(1),
     TURNSTILE_SECRET_KEY: z.string().min(1),
+    REPORT_TURNSTILE_SECRET_KEY: z.string().min(1),
     TURNSTILE_EXPECTED_HOSTNAME: z.string().min(1),
     TURNSTILE_EXPECTED_ACTION: z.string().min(1),
     REPORT_TURNSTILE_EXPECTED_ACTION: z.string().min(1).default("ranking_report"),

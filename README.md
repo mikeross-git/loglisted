@@ -564,13 +564,16 @@ the rankings snapshot. Public responses expose only `clear` or `pending_review`,
 data or report details.
 
 ```ini
+REPORT_TURNSTILE_SECRET_KEY=<secret for the dedicated ranking-report widget>
 REPORT_TURNSTILE_EXPECTED_ACTION=ranking_report
 MODERATION_REPORT_RETENTION_DAYS=90
 MODERATION_REPORTS_PER_SESSION_PER_DAY=3
 MODERATION_REPORTS_PER_IP_PER_DAY=5
 ```
 
-Set the Framer rankings component's **Turnstile Key** property to the public site key approved for
-`www.loglisted.com`. Review reports manually in the Scripts collection. Set **Flag Status** to
+Set the Framer rankings component's **Turnstile Key** property to the public site key belonging to
+that dedicated report widget and approved for `www.loglisted.com`. The site key and
+`REPORT_TURNSTILE_SECRET_KEY` must be from the same Cloudflare widget. Review reports manually in
+the Scripts collection. Set **Flag Status** to
 `Dismissed` to clear the marker, or set `Confirmed Violation` and **Show on Loglist** to `No` to
 remove a listing. Never put the Turnstile secret or Framer API token in Framer code.
