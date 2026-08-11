@@ -384,7 +384,11 @@ export class FramerCmsModerationService {
       ) {
         return "already_pending";
       }
-      const fieldData = { ...item.fieldData } as FieldDataInput;
+      // Framer merges fieldData for existing collection items. Send only the
+      // moderation fields: replaying every serialized CMS value can include
+      // computed or reference data that is valid for reads but invalid as an
+      // update input.
+      const fieldData: FieldDataInput = {};
       const flaggedField = supportedField(fields, map.flagged);
       const updates: Partial<Record<FramerFieldKey, string | boolean>> = {
         flagged: pendingFlagValue(flaggedField),

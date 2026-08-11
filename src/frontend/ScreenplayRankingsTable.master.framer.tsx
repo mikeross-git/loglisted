@@ -436,7 +436,13 @@ function FlagButton({ record, onReport }: { record: PublicRankingRecord; onRepor
       title={pending ? "Pending review" : "Report this listing"}
       onClick={onReport}
     >
-      {pending ? "Flagged" : "⚑"}
+      {pending ? (
+        "Flagged"
+      ) : (
+        <svg className="lr-flag-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 21V4m0 1h10.5l-2 3 2 3H6" />
+        </svg>
+      )}
     </button>
   );
 }
@@ -826,6 +832,15 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
       setReportDetails("");
     } catch (cause) {
       setReportError(cause instanceof Error ? cause.message : "The report could not be submitted.");
+      setTurnstileToken(null);
+      const widgetId = turnstileWidgetRef.current;
+      if (widgetId && window.turnstile) {
+        try {
+          window.turnstile.reset(widgetId);
+        } catch {
+          // The dialog may have closed or Cloudflare may already have expired the widget.
+        }
+      }
     } finally {
       setReportSubmitting(false);
     }
@@ -1083,6 +1098,7 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
                     </span>
                   </th>
                   <th>Contact</th>
+                  <th>Report</th>
                 </tr>
               </thead>
 
@@ -1120,11 +1136,12 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
 
                     <td className="lr-score">{formatScore(record.scores[query.scoreKey])}</td>
 
-                    <td>
-                      <div className="lr-row-actions">
-                        <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
-                        <FlagButton record={record} onReport={() => setReportingRecord(record)} />
-                      </div>
+                    <td className="lr-contact-cell">
+                      <ContactLink record={record} profilePathPrefix={profilePathPrefix} />
+                    </td>
+
+                    <td className="lr-report-cell">
+                      <FlagButton record={record} onReport={() => setReportingRecord(record)} />
                     </td>
                   </tr>
                 ))}
@@ -1200,7 +1217,9 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
                   aria-label="Close report dialog"
                   onClick={() => setReportingRecord(null)}
                 >
-                  ×
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 5l14 14M19 5L5 19" />
+                  </svg>
                 </button>
                 <h2 id="lr-report-title">Report this listing</h2>
                 <p>
@@ -1529,7 +1548,7 @@ const STYLES = `
 
 .loglisted-rankings table {
     width: 100%;
-    min-width: 900px;
+    min-width: 960px;
     height: auto !important;
     border-collapse: collapse;
     table-layout: fixed;
@@ -1560,11 +1579,11 @@ const STYLES = `
 }
 
 .loglisted-rankings th:nth-child(2) {
-    width: 14%;
+    width: 13%;
 }
 
 .loglisted-rankings th:nth-child(3) {
-    width: 26%;
+    width: 21%;
 }
 
 .loglisted-rankings th:nth-child(4) {
@@ -1572,16 +1591,22 @@ const STYLES = `
 }
 
 .loglisted-rankings th:nth-child(5) {
-    width: 11%;
+    width: 10%;
 }
 
 .loglisted-rankings th:nth-child(6) {
-    width: 13%;
+    width: 12%;
     text-align: center;
 }
 
 .loglisted-rankings th:nth-child(7) {
     width: 9%;
+    text-align: center;
+}
+
+.loglisted-rankings th:nth-child(8) {
+    width: 8%;
+    text-align: center;
 }
 
 .loglisted-rankings td {
@@ -1732,15 +1757,12 @@ const STYLES = `
     text-decoration: none;
 }
 
-.loglisted-rankings td:last-child {
+.loglisted-rankings .lr-contact-cell,
+.loglisted-rankings .lr-report-cell {
     text-align: center;
 }
 
 .loglisted-rankings td:nth-child(6) {
-    text-align: center;
-}
-
-.loglisted-rankings th:last-child {
     text-align: center;
 }
 
@@ -1998,8 +2020,9 @@ const STYLES = `
 }
 
 .lr-row-actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
-.lr-flag { min-width: 38px; min-height: 38px; border: 1px solid var(--lr-accent); border-radius: 6px; background: transparent; color: var(--lr-accent); cursor: pointer; font: 700 15px var(--lr-ui-font); }
-.lr-flag.is-pending { border-color: var(--lr-gold); color: #76561f; cursor: default; font-size: 11px; }
+.lr-flag { display: inline-grid; place-items: center; width: 46px; min-width: 46px; height: 44px; min-height: 44px; padding: 7px; border: 1px solid var(--lr-accent); border-radius: 6px; background: transparent; color: var(--lr-accent); cursor: pointer; font: 700 15px var(--lr-ui-font); }
+.lr-flag-icon { display: block; width: 25px; height: 25px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.lr-flag.is-pending { width: auto; padding-inline: 8px; border-color: var(--lr-gold); color: #76561f; cursor: default; font-size: 11px; }
 .lr-dialog-backdrop { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; padding: 20px; background: rgba(9,11,11,.72); }
 .lr-dialog { position: relative; width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; padding: 28px; border: 1px solid var(--lr-gold); border-radius: 10px; background: var(--lr-background); color: var(--lr-text); box-shadow: 0 16px 50px rgba(0,0,0,.28); }
 .lr-dialog h2 { margin: 0 36px 10px 0; font: 28px/1.2 var(--lr-font); }
@@ -2009,7 +2032,8 @@ const STYLES = `
 .lr-dialog select, .lr-dialog textarea { box-sizing: border-box; width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--lr-border); border-radius: 6px; background-color: #f8eedf; color: var(--lr-text); font: 14px/1.4 var(--lr-font); }
 .lr-dialog select { appearance: none; -webkit-appearance: none; padding-right: 44px; background-image: linear-gradient(45deg, transparent 50%, #5d554b 50%), linear-gradient(135deg, #5d554b 50%, transparent 50%); background-position: calc(100% - 20px) calc(50% - 2px), calc(100% - 14px) calc(50% - 2px); background-size: 6px 6px, 6px 6px; background-repeat: no-repeat; cursor: pointer; }
 .lr-dialog textarea { min-height: 100px; resize: vertical; }
-.lr-dialog-close { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--lr-text); cursor: pointer; font: 400 38px/1 var(--lr-ui-font); }
+.lr-dialog-close { position: absolute; top: 10px; right: 10px; display: grid; place-items: center; width: 48px; height: 48px; padding: 8px; border: 0; background: transparent; color: var(--lr-text); cursor: pointer; }
+.lr-dialog-close svg { display: block; width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: round; }
 .lr-report-submit { min-height: 48px; padding: 12px 18px; border: 1px solid var(--lr-accent); border-radius: 6px; background: var(--lr-accent); color: white; cursor: pointer; font: 700 15px var(--lr-ui-font); }
 .lr-report-submit:disabled { cursor: not-allowed; opacity: .55; }
 .lr-report-error { color: #9d2f24; font-weight: 700; }
