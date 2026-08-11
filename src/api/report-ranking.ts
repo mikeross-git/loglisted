@@ -20,7 +20,7 @@ const ReportRequestSchema = z
       .min(1)
       .max(200)
       .regex(/^[a-z0-9-]+$/),
-    reason: z.enum(["copyright", "inappropriate", "spam", "other"]),
+    reason: z.enum(["copyright", "impersonation", "inappropriate", "spam", "suspicious", "other"]),
     details: z.string().trim().max(500).default(""),
     turnstileToken: z.string().min(1).max(4096),
   })
@@ -44,14 +44,7 @@ export interface ReportRankingDependencies {
 }
 
 export type RankingReportStage =
-  | "origin"
-  | "session"
-  | "csrf"
-  | "input"
-  | "rate_limit"
-  | "turnstile"
-  | "reservation"
-  | "cms";
+  "origin" | "session" | "csrf" | "input" | "rate_limit" | "turnstile" | "reservation" | "cms";
 
 export interface RankingReportRejectionDiagnostic {
   stage: RankingReportStage;
@@ -125,6 +118,7 @@ export async function postRankingReport(
         slug: input.rankingSlug,
         reportId,
         reason: input.reason,
+        details: input.details,
         createdAt,
       });
       if (outcome === "not_found") throw new AuthorizationError("The screenplay is unavailable.");

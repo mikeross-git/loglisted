@@ -1238,8 +1238,10 @@ export default function ScreenplayRankingsTable(props: ScreenplayRankingsTablePr
                     onChange={(event) => setReportReason(event.target.value)}
                   >
                     <option value="copyright">Copyright violation</option>
+                    <option value="impersonation">Impersonation</option>
                     <option value="inappropriate">Inappropriate content</option>
                     <option value="spam">Spam</option>
+                    <option value="suspicious">Suspicious content</option>
                     <option value="other">Other</option>
                   </select>
                   <label htmlFor="lr-report-details">Additional details (optional)</label>

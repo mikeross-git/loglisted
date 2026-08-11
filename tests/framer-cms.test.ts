@@ -90,8 +90,10 @@ function fields(): CmsFieldDescriptor[] {
           ? {
               cases: [
                 { id: "reason-copyright", name: "Copyright violation" },
+                { id: "reason-impersonation", name: "Impersonation" },
                 { id: "reason-inappropriate", name: "Inappropriate content" },
                 { id: "reason-spam", name: "Spam" },
+                { id: "reason-suspicious", name: "Suspicious Content" },
                 { id: "reason-other", name: "Other" },
               ],
             }
@@ -152,8 +154,10 @@ describe("Framer CMS integration", () => {
               cases: [
                 { id: "reason-none", name: "None" },
                 { id: "reason-copyright", name: "Copyright" },
+                { id: "reason-impersonation", name: "Impersonation" },
                 { id: "reason-inappropriate", name: "Inappropriate Content" },
                 { id: "reason-spam", name: "Spam" },
+                { id: "reason-suspicious", name: "Suspicious Content" },
                 { id: "reason-other", name: "Other" },
               ],
             }
@@ -202,12 +206,16 @@ describe("Framer CMS integration", () => {
       await service.flagPublishedRanking({
         slug: "sample-script-12345678",
         reportId: "report-1",
-        reason: "copyright",
+        reason: "suspicious",
+        details: "The listing contains suspicious claims.",
         createdAt: "2026-08-11T00:00:00.000Z",
       }),
     ).toBe("flagged");
     expect(added[0]?.[0]?.fieldData?.[fieldMap.flagged]?.value).toBe("flag-violation");
-    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagReason]?.value).toBe("reason-copyright");
+    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagReason]?.value).toBe("reason-suspicious");
+    expect(added[0]?.[0]?.fieldData?.[fieldMap.flagAdditionalDetails]?.value).toBe(
+      "The listing contains suspicious claims.",
+    );
     expect(added[0]?.[0]?.fieldData?.[fieldMap.flagStatus]?.value).toBe("flag-pending");
   });
 

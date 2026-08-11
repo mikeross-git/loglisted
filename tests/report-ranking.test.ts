@@ -76,7 +76,9 @@ describe("ranking reports", () => {
     );
     expect(response.status).toBe(201);
     expect(turnstile.verify).toHaveBeenCalledWith("verified-token");
-    expect(cms.flagPublishedRanking).toHaveBeenCalledOnce();
+    expect(cms.flagPublishedRanking).toHaveBeenCalledWith(
+      expect.objectContaining({ details: "Possible copied screenplay." }),
+    );
     expect(rankings.invalidateCache).toHaveBeenCalledOnce();
   });
 

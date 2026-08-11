@@ -5,7 +5,7 @@ export const ModerationReportSchema = z.object({
   version: z.literal(1),
   reportId: z.string().uuid(),
   rankingSlug: z.string().min(1).max(200),
-  reason: z.enum(["copyright", "inappropriate", "spam", "other"]),
+  reason: z.enum(["copyright", "impersonation", "inappropriate", "spam", "suspicious", "other"]),
   details: z.string().max(500),
   status: z.literal("pending_review"),
   anonymousSessionHash: z.string().regex(/^[a-f0-9]{64}$/),

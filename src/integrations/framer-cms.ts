@@ -58,6 +58,7 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
   flagged: "Flagged",
   flagStatus: "Flag Status",
   flagReason: "Flag Reason",
+  flagAdditionalDetails: "Flag Additional Details",
   flaggedAt: "Flagged At",
   flagReportId: "Flag Report ID",
   flagReviewedAt: "Flag Reviewed At",
@@ -305,6 +306,7 @@ export function buildFramerCmsItem(
     flagged: supportedField(fields, map.flagged).type === "boolean" ? false : "No",
     flagStatus: "Clear",
     flagReason: undefined,
+    flagAdditionalDetails: undefined,
     flaggedAt: undefined,
     flagReportId: undefined,
     flagReviewedAt: undefined,
@@ -324,12 +326,15 @@ export function buildFramerCmsItem(
   return { slug, fieldData, draft: publishMode === "draft" };
 }
 
-export type PublicFlagReason = "copyright" | "inappropriate" | "spam" | "other";
+export type PublicFlagReason =
+  "copyright" | "impersonation" | "inappropriate" | "spam" | "suspicious" | "other";
 
 const flagReasonLabels: Record<PublicFlagReason, string> = {
   copyright: "Copyright",
-  inappropriate: "Inappropriate content",
+  impersonation: "Impersonation",
+  inappropriate: "Inappropriate Content",
   spam: "Spam",
+  suspicious: "Suspicious Content",
   other: "Other",
 };
 
@@ -360,6 +365,7 @@ export class FramerCmsModerationService {
     slug: string;
     reportId: string;
     reason: PublicFlagReason;
+    details: string;
     createdAt: string;
   }): Promise<"flagged" | "already_pending" | "not_found"> {
     const {
@@ -397,6 +403,7 @@ export class FramerCmsModerationService {
         flaggedAt: input.createdAt,
         flagReportId: input.reportId,
       };
+      if (input.details) updates.flagAdditionalDetails = input.details;
       for (const [key, value] of Object.entries(updates) as [FramerFieldKey, string | boolean][]) {
         const field = supportedField(fields, map[key]);
         fieldData[field.id] = fieldEntry(field, value);
