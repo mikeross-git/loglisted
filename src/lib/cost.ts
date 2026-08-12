@@ -40,7 +40,10 @@ export function calculateCost(
   usage: TokenUsage,
 ): CostBreakdown {
   const price = getModelPrice(pricing, model);
-  if (!price) throw new CostBudgetError(`Pricing is missing for active model: ${model}`);
+  if (!price)
+    throw new CostBudgetError(`Pricing is missing for active model: ${model}`, {
+      details: { reasonCode: "active_model_pricing_missing" },
+    });
   return costWithPrice(model, usage, price);
 }
 

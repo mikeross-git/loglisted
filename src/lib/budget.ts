@@ -58,20 +58,26 @@ export class ScriptBudget {
       this.inputTokens + this.reservedInputTokens + projected.inputTokens >
       this.limits.maximumInputTokens
     ) {
-      throw new CostBudgetError("Per-script input token budget exceeded.");
+      throw new CostBudgetError("Per-script input token budget exceeded.", {
+        details: { reasonCode: "per_script_input_tokens" },
+      });
     }
     if (
       this.outputTokens + this.reservedOutputTokens + projected.outputTokens >
       this.limits.maximumOutputTokens
     ) {
-      throw new CostBudgetError("Per-script output token budget exceeded.");
+      throw new CostBudgetError("Per-script output token budget exceeded.", {
+        details: { reasonCode: "per_script_output_tokens" },
+      });
     }
     if (
       !this.dryRun &&
       this.actualCostUsd + this.reservedCostUsd + projected.totalCostUsd >
         this.limits.maximumCostUsd
     ) {
-      throw new CostBudgetError("Per-script cost budget exceeded.");
+      throw new CostBudgetError("Per-script cost budget exceeded.", {
+        details: { reasonCode: "per_script_projected_cost" },
+      });
     }
     const globalReservation =
       !this.dryRun && this.globalStore && this.globalLimits
@@ -98,7 +104,10 @@ export class ScriptBudget {
     actual: CostBreakdown,
   ): Promise<void> {
     const stored = this.reservations.get(reservation.id);
-    if (!stored) throw new CostBudgetError("Unknown or already reconciled script reservation.");
+    if (!stored)
+      throw new CostBudgetError("Unknown or already reconciled script reservation.", {
+        details: { reasonCode: "script_budget_reservation_missing" },
+      });
     const exceedsInput = this.inputTokens + usage.inputTokens > this.limits.maximumInputTokens;
     const exceedsOutput = this.outputTokens + usage.outputTokens > this.limits.maximumOutputTokens;
     const exceedsCost =
@@ -120,7 +129,14 @@ export class ScriptBudget {
     }
     this.reservations.delete(reservation.id);
     if (exceedsInput || exceedsOutput || exceedsCost) {
-      throw new CostBudgetError("Actual LLM usage exceeded the per-script hard budget.");
+      const reasonCode = exceedsInput
+        ? "per_script_actual_input_tokens"
+        : exceedsOutput
+          ? "per_script_actual_output_tokens"
+          : "per_script_actual_cost";
+      throw new CostBudgetError("Actual LLM usage exceeded the per-script hard budget.", {
+        details: { reasonCode },
+      });
     }
   }
 

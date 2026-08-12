@@ -62,7 +62,28 @@ describe("per-script token and cost budget", () => {
     });
     await expect(
       budget.reserve(calculateProjectedCost(pricing, "model", 1_000, 1_000)),
-    ).rejects.toBeInstanceOf(CostBudgetError);
+    ).rejects.toMatchObject({
+      details: { reasonCode: "per_script_projected_cost" },
+    });
+  });
+
+  it("distinguishes projected input and output token budget failures", async () => {
+    const projected = calculateProjectedCost(pricing, "model", 1_000, 200);
+    await expect(
+      new ScriptBudget({
+        maximumInputTokens: 999,
+        maximumOutputTokens: 1_000,
+        maximumCostUsd: 1,
+      }).reserve(projected),
+    ).rejects.toMatchObject({ details: { reasonCode: "per_script_input_tokens" } });
+
+    await expect(
+      new ScriptBudget({
+        maximumInputTokens: 10_000,
+        maximumOutputTokens: 199,
+        maximumCostUsd: 1,
+      }).reserve(projected),
+    ).rejects.toMatchObject({ details: { reasonCode: "per_script_output_tokens" } });
   });
 
   it("supports dry run without reserving or recording spend", async () => {

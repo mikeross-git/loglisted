@@ -73,7 +73,10 @@ export class InMemoryAtomicSpendStore implements AtomicSpendStore {
 
   reconcile(reservation: SpendReservation, actualUsd: number): Promise<void> {
     const stored = this.reservations.get(reservation.id);
-    if (!stored) throw new CostBudgetError("Unknown or already reconciled spend reservation.");
+    if (!stored)
+      throw new CostBudgetError("Unknown or already reconciled spend reservation.", {
+        details: { reasonCode: "global_spend_reservation_missing" },
+      });
     const difference = actualUsd - stored.projectedUsd;
     this.hourlySpend.set(
       stored.hourKey,
@@ -176,7 +179,10 @@ export class RedisAtomicSpendStore implements AtomicSpendStore {
       ],
       [actualUsd],
     );
-    if (result[0] !== "ok") throw new CostBudgetError("Spend reservation reconciliation failed.");
+    if (result[0] !== "ok")
+      throw new CostBudgetError("Spend reservation reconciliation failed.", {
+        details: { reasonCode: "global_spend_reconciliation_failed" },
+      });
   }
 
   async snapshot(now: Date): Promise<SpendSnapshot> {
