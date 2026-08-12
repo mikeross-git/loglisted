@@ -70,8 +70,20 @@ export const FRAMER_FIELD_DISPLAY_NAMES = Object.freeze({
 export type FramerFieldKey = keyof typeof FRAMER_FIELD_DISPLAY_NAMES;
 export type FramerFieldMap = Record<FramerFieldKey, string>;
 
-function cmsValidationError(message: string): Error {
-  return Object.assign(new Error(message), { status: 400 });
+function cmsValidationError(message: string, reasonCode = "cms_validation_failed"): Error {
+  return Object.assign(new Error(message), { status: 400, reasonCode });
+}
+
+function safeCmsFailureReason(error: unknown): string {
+  if (typeof error !== "object" || error === null) return "cms_unknown_error";
+  const explicit: unknown = Reflect.get(error, "reasonCode");
+  if (typeof explicit === "string" && /^[a-z0-9_.:-]{1,120}$/i.test(explicit)) return explicit;
+  const providerCode: unknown = Reflect.get(error, "code");
+  if (typeof providerCode === "string" && /^[a-z0-9_.:-]{1,80}$/i.test(providerCode)) {
+    return `cms_provider_${providerCode.toLowerCase()}`;
+  }
+  const status = statusFromError(error);
+  return status === undefined ? "cms_provider_unclassified" : `cms_provider_http_${status}`;
 }
 
 type SupportedFieldType =
@@ -154,7 +166,10 @@ export function resolveFramerFieldMap(fields: readonly CmsFieldDescriptor[]): Fr
   ][]) {
     const matches = fields.filter((field) => field.name === displayName);
     if (matches.length !== 1 || !matches[0]) {
-      throw cmsValidationError(`Framer CMS field "${displayName}" was not found exactly once.`);
+      throw cmsValidationError(
+        `Framer CMS field "${displayName}" was not found exactly once.`,
+        `cms_field_missing_${key}`,
+      );
     }
     resolved[key] = matches[0].id;
   }
@@ -199,7 +214,10 @@ function supportedField(
       field.type,
     )
   ) {
-    throw cmsValidationError(`Framer CMS field ${id} has an unsupported type.`);
+    throw cmsValidationError(
+      `Framer CMS field ${id} has an unsupported type.`,
+      "cms_field_type_unsupported",
+    );
   }
   return field as CmsFieldDescriptor & { type: SupportedFieldType };
 }
@@ -209,7 +227,10 @@ function enumValue(field: CmsFieldDescriptor, displayValue: string): string {
     (candidate) => candidate.name.toLowerCase() === displayValue.toLowerCase(),
   );
   if (!match) {
-    throw cmsValidationError(`Framer enum field "${field.name}" lacks "${displayValue}".`);
+    throw cmsValidationError(
+      `Framer enum field "${field.name}" lacks "${displayValue}".`,
+      "cms_enum_case_missing",
+    );
   }
   return match.id;
 }
@@ -236,18 +257,29 @@ function fieldEntry(
     return { type: "collectionReference", value };
   }
   if (field.type === "string") return { type: "string", value: String(value) };
-  throw cmsValidationError(`Value is incompatible with Framer field "${field.name}".`);
+  throw cmsValidationError(
+    `Value is incompatible with Framer field "${field.name}".`,
+    "cms_field_value_incompatible",
+  );
 }
 
 function requiredContact(result: StoredResult) {
   const contact = result.internal.submissionContact;
   if (!contact) {
-    throw cmsValidationError("Submission contact data is unavailable for CMS synchronization.");
+    throw cmsValidationError(
+      "Submission contact data is unavailable for CMS synchronization.",
+      "cms_submission_contact_missing",
+    );
   }
   const writerName = `${contact.firstName.trim()} ${contact.lastName.trim()}`
     .replace(/\s+/g, " ")
     .trim();
-  if (!writerName) throw cmsValidationError("Writer name is required for CMS synchronization.");
+  if (!writerName) {
+    throw cmsValidationError(
+      "Writer name is required for CMS synchronization.",
+      "cms_writer_name_missing",
+    );
+  }
   return { contact, writerName };
 }
 
@@ -267,7 +299,10 @@ export function buildFramerCmsItem(
   const { contact, writerName } = requiredContact(result);
   const scriptTitle = result.projectTitle.trim();
   if (!scriptTitle) {
-    throw cmsValidationError("Script title is required for CMS synchronization.");
+    throw cmsValidationError(
+      "Script title is required for CMS synchronization.",
+      "cms_script_title_missing",
+    );
   }
   const map = resolveFramerFieldMap(fields);
   const slug = slugifyWriterName(writerName, result.resultId);
@@ -571,6 +606,7 @@ export async function syncFramerCmsBestEffort(
         processingStage: "cms_sync",
         jobId: result.resultId,
         errorClass: error instanceof Error ? error.name : "UnknownError",
+        reasonCode: safeCmsFailureReason(error),
         retryable: isTransient(error),
       });
     } catch {
