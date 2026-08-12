@@ -75,6 +75,7 @@ function fields(): CmsFieldDescriptor[] {
           cases: [
             { id: "genre-action", name: "Action" },
             { id: "genre-comedy", name: "Comedy" },
+            { id: "genre-dark-comedy", name: "Dark Comedy" },
           ],
         }
       : key === "flagStatus"
@@ -136,6 +137,19 @@ describe("Framer CMS integration", () => {
         result.categoryScores[scoreKey as keyof typeof result.categoryScores],
       );
     }
+  });
+
+  it("maps camel-case genre keys to CMS display labels", () => {
+    const item = buildFramerCmsItem(
+      { ...result, declaredGenre: "darkComedy" },
+      fields(),
+      "published",
+      { genreCategory: "genre-item-dark-comedy" },
+    );
+
+    expect(fieldValue(item, "genreCategory")).toBe("genre-item-dark-comedy");
+    expect(fieldValue(item, "genreDropdown")).toBe("genre-dark-comedy");
+    expect(fieldValue(item, "searchIndex")).toContain("Dark Comedy");
   });
 
   it("maps moderation reports to the live CMS enum labels", async () => {

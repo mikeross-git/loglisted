@@ -203,6 +203,29 @@ const formatLabels: Record<string, string> = {
   unknown: "Unknown",
 };
 
+const genreLabels: Record<string, string> = {
+  action: "Action",
+  animated: "Animated",
+  biopic: "Biopic",
+  comedy: "Comedy",
+  crime: "Crime",
+  darkComedy: "Dark Comedy",
+  drama: "Drama",
+  dramedy: "Dramedy",
+  family: "Family",
+  fantasy: "Fantasy",
+  historical: "Historical",
+  horror: "Horror",
+  romCom: "Rom-Com",
+  sciFi: "Sci-Fi",
+  thriller: "Thriller",
+};
+
+function genreLabel(value: string): string {
+  const trimmed = value.trim();
+  return genreLabels[trimmed] ?? trimmed;
+}
+
 function supportedField(
   fields: readonly CmsFieldDescriptor[],
   id: string,
@@ -312,7 +335,7 @@ export function buildFramerCmsItem(
   const websiteUrl = contact.websiteUrl?.trim();
   const showOnLoglistField = supportedField(fields, map.showOnLoglist);
   const formatLabel = formatLabels[result.declaredFormat] ?? result.declaredFormat;
-  const genre = result.declaredGenre.trim();
+  const genre = genreLabel(result.declaredGenre);
   const searchIndex = [writerName, scriptTitle, logline, formatLabel, genre]
     .filter((value): value is string => Boolean(value))
     .join(" ");
@@ -521,18 +544,27 @@ export class FramerCmsSynchronizer {
         let genreReferenceId: string | undefined;
         if (genreField.type === "collectionReference") {
           if (!genreField.collectionId) {
-            throw cmsValidationError("Genre reference collection is unavailable.");
+            throw cmsValidationError(
+              "Genre reference collection is unavailable.",
+              "cms_genre_reference_collection_id_missing",
+            );
           }
           const genreCollection = await connection.getCollection(genreField.collectionId);
           if (!genreCollection) {
-            throw cmsValidationError("Genre reference collection was not found.");
+            throw cmsValidationError(
+              "Genre reference collection was not found.",
+              "cms_genre_reference_collection_not_found",
+            );
           }
-          const requestedGenreSlug = slugBase(result.declaredGenre);
+          const requestedGenreSlug = slugBase(genreLabel(result.declaredGenre));
           genreReferenceId = (await genreCollection.getItems()).find(
             (candidate) => slugBase(candidate.slug) === requestedGenreSlug,
           )?.id;
           if (!genreReferenceId) {
-            throw cmsValidationError("Submitted genre has no matching Framer CMS item.");
+            throw cmsValidationError(
+              "Submitted genre has no matching Framer CMS item.",
+              "cms_genre_reference_item_not_found",
+            );
           }
         }
         const item = buildFramerCmsItem(
