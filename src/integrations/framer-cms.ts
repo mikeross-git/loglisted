@@ -305,7 +305,9 @@ export function buildFramerCmsItem(
     showOnLoglist: showOnLoglistField.type === "boolean" ? true : "Yes",
     flagged: supportedField(fields, map.flagged).type === "boolean" ? false : "No",
     flagStatus: "Clear",
-    flagReason: undefined,
+    // Framer's CMS UI default is not reliably applied to API-created items.
+    // Populate the explicit neutral enum case for a newly synchronized script.
+    flagReason: "None",
     flagAdditionalDetails: undefined,
     flaggedAt: undefined,
     flagReportId: undefined,

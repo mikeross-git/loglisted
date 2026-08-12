@@ -89,6 +89,7 @@ function fields(): CmsFieldDescriptor[] {
         : key === "flagReason"
           ? {
               cases: [
+                { id: "reason-none", name: "None" },
                 { id: "reason-copyright", name: "Copyright violation" },
                 { id: "reason-impersonation", name: "Impersonation" },
                 { id: "reason-inappropriate", name: "Inappropriate content" },
@@ -129,6 +130,7 @@ describe("Framer CMS integration", () => {
       "Jané Doe The Example A writer tests a secure CMS integration. Half-Hour TV Pilot Comedy",
     );
     expect(fieldValue(item, "overallScore")).toBe(7.6);
+    expect(fieldValue(item, "flagReason")).toBe("reason-none");
     for (const scoreKey of Object.keys(result.categoryScores)) {
       expect(fieldValue(item, `${scoreKey}Score`)).toBe(
         result.categoryScores[scoreKey as keyof typeof result.categoryScores],
