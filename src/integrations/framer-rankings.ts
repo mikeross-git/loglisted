@@ -6,6 +6,7 @@ import type {
   PublicRankingsResponse,
   RankingScores,
 } from "../types/rankings.js";
+import { ImdbProfileUrlSchema } from "../types/project.js";
 
 export interface FramerRankingsConfig extends FramerCmsConfig {
   FRAMER_RANKINGS_ENABLED: boolean;
@@ -35,15 +36,8 @@ function scoreValue(value: unknown): number | null {
 function imdbValue(value: unknown): string | null {
   const candidate = textValue(value);
   if (!candidate) return null;
-  try {
-    const url = new URL(candidate);
-    if (url.protocol !== "https:" || !["imdb.com", "www.imdb.com"].includes(url.hostname)) {
-      return null;
-    }
-    return url.toString();
-  } catch {
-    return null;
-  }
+  const parsed = ImdbProfileUrlSchema.safeParse(candidate);
+  return parsed.success ? new URL(parsed.data).toString() : null;
 }
 
 function websiteValue(value: unknown): string | null {

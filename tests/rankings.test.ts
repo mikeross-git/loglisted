@@ -48,7 +48,12 @@ function fieldId(key: keyof typeof FRAMER_FIELD_DISPLAY_NAMES): string {
   return field.id;
 }
 
-function fieldData(email: string, overall: number, showOnLoglist = true) {
+function fieldData(
+  email: string,
+  overall: number,
+  showOnLoglist = true,
+  imdbUrl = "https://www.imdb.com/name/nm0000001/",
+) {
   const data: Record<string, { type: string; value: unknown }> = {
     [fieldId("writerName")]: { type: "string", value: "Writer One" },
     [fieldId("email")]: { type: "string", value: email },
@@ -56,7 +61,7 @@ function fieldData(email: string, overall: number, showOnLoglist = true) {
     [fieldId("logline")]: { type: "string", value: "A precise test logline." },
     [fieldId("format")]: { type: "string", value: "Feature" },
     [fieldId("genreDropdown")]: { type: "enum", value: "comedy" },
-    [fieldId("imdb")]: { type: "link", value: "https://www.imdb.com/name/nm0000001/" },
+    [fieldId("imdb")]: { type: "link", value: imdbUrl },
     [fieldId("website")]: { type: "link", value: "https://writer.example.com/" },
     [fieldId("showOnLoglist")]: { type: "boolean", value: showOnLoglist },
     [fieldId("flagStatus")]: { type: "enum", value: "clear" },
@@ -78,7 +83,7 @@ function fieldData(email: string, overall: number, showOnLoglist = true) {
   return data;
 }
 
-function createReader() {
+function createReader(imdbUrl?: string) {
   const disconnect = vi.fn(() => Promise.resolve());
   const connection: FramerCmsConnectionAdapter = {
     getCollection: () =>
@@ -91,7 +96,7 @@ function createReader() {
               slug: "writer-one",
               draft: false,
               updatedAt: "2026-08-01T00:00:00.000Z",
-              fieldData: fieldData("private@example.com", 12),
+              fieldData: fieldData("private@example.com", 12, true, imdbUrl),
             },
             {
               id: "hidden",
@@ -195,6 +200,14 @@ describe("public screenplay rankings", () => {
       scores: { overall: 10 },
     });
     expect(JSON.stringify(response)).not.toContain("private@example.com");
+  });
+
+  it("preserves secure IMDbPro name-profile links", async () => {
+    const imdbUrl = "https://pro.imdb.com/name/nm13888731/?ref_=hm_prof_nme";
+    const { instance } = createReader(imdbUrl);
+    const response = await instance.getPublicRankings();
+
+    expect(response.records[0]?.imdbUrl).toBe(imdbUrl);
   });
 
   it("validates server pagination and filter query parameters", () => {
